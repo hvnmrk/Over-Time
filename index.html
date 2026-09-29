@@ -3,13 +3,21 @@
 
 <head>
     <meta charset="utf-8">
+
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <meta name="theme-color" content="#e96b2c">
+    <meta name="theme-color" content="#ea6a24">
 
     <title>Over-Time | OJT Tracker</title>
 
+    <link rel="manifest" href="manifest.json">
+
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+
     <link rel="stylesheet" href="style.css">
+
+    <script src="https://unpkg.com/lucide@latest" defer></script>
+
     <script src="script.js" defer></script>
 </head>
 
@@ -17,43 +25,67 @@
 
     <div class="app-shell">
 
-        <!-- =========================
-             SIDEBAR
-        ========================== -->
+        <!-- SIDEBAR -->
 
         <aside class="sidebar" id="sidebar">
 
             <div class="brand">
-                <span class="brand-mark">ot</span>
+
+                <span class="brand-mark">
+                    ot
+                </span>
 
                 <span class="brand-name">
                     over<span>time</span>
                 </span>
+
             </div>
+
 
             <p class="nav-label">
                 OJT TRACKER
             </p>
 
+
             <nav>
 
                 <button class="nav-link active" data-page="overview" type="button">
-                    Dashboard
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Dashboard</span>
                 </button>
+
+
+                <button class="nav-link" data-page="calendar" type="button">
+                    <i data-lucide="calendar-days"></i>
+                    <span>Calendar</span>
+                </button>
+
+
+                <button class="nav-link" data-page="attendance" type="button">
+                    <i data-lucide="clock-3"></i>
+                    <span>Attendance</span>
+                </button>
+
 
                 <button class="nav-link" data-page="entries" type="button">
-                    Daily Logs
+                    <i data-lucide="notebook-tabs"></i>
+                    <span>Daily Logs</span>
                 </button>
+
 
                 <button class="nav-link" data-page="reports" type="button">
-                    Weekly Report
+                    <i data-lucide="file-text"></i>
+                    <span>Reports</span>
                 </button>
 
+
                 <button class="nav-link" data-page="settings" type="button">
-                    Settings
+                    <i data-lucide="settings"></i>
+                    <span>Settings</span>
                 </button>
 
             </nav>
+
 
             <div class="sidebar-bottom">
 
@@ -78,20 +110,21 @@
         </aside>
 
 
+
         <div class="backdrop" id="backdrop" hidden></div>
 
 
-        <!-- =========================
-             MAIN CONTENT
-        ========================== -->
 
         <div class="content-shell">
 
+            <!-- TOP BAR -->
+
             <header class="topbar">
 
-                <button type="button" class="menu-button" id="menuButton" aria-label="Open menu">
+                <button class="menu-button" id="menuButton" type="button" aria-label="Open menu">
                     ☰
                 </button>
+
 
                 <div class="breadcrumb">
                     OJT Tracker /
@@ -100,46 +133,70 @@
                     </strong>
                 </div>
 
-                <span id="today"></span>
+
+                <div class="topbar-actions">
+
+                    <span class="connection-status" id="connectionStatus">
+                        <span class="status-dot"></span>
+                        Online
+                    </span>
+
+
+                    <button class="topbar-button" id="installAppButton" type="button" hidden>
+                        <i data-lucide="download"></i>
+                        Install
+                    </button>
+
+
+                    <span id="today"></span>
+
+                </div>
 
             </header>
 
 
+
             <main>
 
-                <!-- =========================
-                     DASHBOARD
-                ========================== -->
+                <!-- =====================================================
+                 DASHBOARD
+            ====================================================== -->
 
                 <section class="page active" id="overview">
 
-                    <div class="dashboard-header">
+                    <!-- OLD DASHBOARD -->
+
+                    <div class="hero">
 
                         <div>
 
-                            <p class="section-label">
-                                OJT TRACKER
+                            <p class="eyebrow">
+                                YOUR OJT JOURNEY
                             </p>
 
                             <h1>
-                                Good day,
-                                <span id="overviewName">
-                                    Student
-                                </span>.
+                                Every hour has a story.
                             </h1>
 
-                            <p class="muted dashboard-copy">
-                                Record your attendance, daily tasks,
-                                and rendered internship hours.
+                            <p>
+                                Track each day of your internship
+                                and turn your work into organized
+                                reports.
                             </p>
+
+                            <button class="button light" type="button" data-new>
+                                + Add today's entry
+                            </button>
 
                         </div>
 
-                        <button class="button primary" type="button" data-new>
-                            + Add Daily Entry
-                        </button>
+
+                        <div class="hero-art" aria-hidden="true">
+                            ✦
+                        </div>
 
                     </div>
+
 
 
                     <!-- ATTENDANCE -->
@@ -160,6 +217,7 @@
                                 You haven't timed in yet.
                             </p>
 
+
                             <div class="attendance-times" id="attendanceTimes"></div>
 
                         </div>
@@ -168,10 +226,13 @@
                         <div class="attendance-actions">
 
                             <button class="button time-in-button" id="quickTimeIn" type="button">
+                                <i data-lucide="log-in"></i>
                                 Time In
                             </button>
 
+
                             <button class="button time-out-button" id="quickTimeOut" type="button">
+                                <i data-lucide="log-out"></i>
                                 Time Out
                             </button>
 
@@ -180,38 +241,56 @@
                     </section>
 
 
-                    <!-- SUMMARY -->
+
+                    <!-- ALERT -->
+
+                    <div class="attendance-warning" id="attendanceWarning" hidden>
+
+                        <i data-lucide="triangle-alert"></i>
+
+                        <span id="attendanceWarningText"></span>
+
+                    </div>
+
+
 
                     <div class="section-heading">
 
                         <div>
 
-                            <p class="section-label">
-                                SUMMARY
+                            <p class="eyebrow accent">
+                                AT A GLANCE
                             </p>
 
                             <h2>
-                                OJT Progress
+                                Your progress
                             </h2>
 
                         </div>
 
+
                         <button class="text-button" data-page="settings" type="button">
-                            Edit required hours
+                            Edit goal
                         </button>
 
                     </div>
+
 
 
                     <div class="stats">
 
                         <article class="card">
 
+                            <span class="stat-icon">
+                                <i data-lucide="clock"></i>
+                            </span>
+
                             <p>
-                                Rendered Hours
+                                Rendered hours
                             </p>
 
                             <h3>
+
                                 <span id="renderedHours">
                                     0
                                 </span>
@@ -219,22 +298,29 @@
                                 <small>
                                     hrs
                                 </small>
+
                             </h3>
 
-                            <span class="muted" id="remainingHours">
+                            <span id="remainingHours" class="muted">
                                 0 hours remaining
                             </span>
 
                         </article>
 
 
+
                         <article class="card">
 
+                            <span class="stat-icon">
+                                <i data-lucide="target"></i>
+                            </span>
+
                             <p>
-                                Required Hours
+                                Required hours
                             </p>
 
                             <h3>
+
                                 <span id="requiredHours">
                                     468
                                 </span>
@@ -242,19 +328,25 @@
                                 <small>
                                     hrs
                                 </small>
+
                             </h3>
 
                             <span class="muted">
-                                Internship requirement
+                                Editable in Settings
                             </span>
 
                         </article>
 
 
+
                         <article class="card">
 
+                            <span class="stat-icon">
+                                <i data-lucide="notebook"></i>
+                            </span>
+
                             <p>
-                                Daily Logs
+                                Daily entries
                             </p>
 
                             <h3 id="entryCount">
@@ -262,7 +354,7 @@
                             </h3>
 
                             <span class="muted">
-                                Saved work entries
+                                Days documented
                             </span>
 
                         </article>
@@ -270,16 +362,61 @@
                     </div>
 
 
-                    <div class="overview-grid">
 
-                        <!-- PROGRESS -->
+                    <!-- MONTH SUMMARY -->
+
+                    <div class="month-summary">
+
+                        <div>
+
+                            <span>
+                                Logs this month
+                            </span>
+
+                            <strong id="monthLogCount">
+                                0
+                            </strong>
+
+                        </div>
+
+
+                        <div>
+
+                            <span>
+                                Attendance days
+                            </span>
+
+                            <strong id="monthAttendanceCount">
+                                0
+                            </strong>
+
+                        </div>
+
+
+                        <div>
+
+                            <span>
+                                Incomplete attendance
+                            </span>
+
+                            <strong id="monthIncompleteCount">
+                                0
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+
+
+                    <div class="overview-grid">
 
                         <article class="panel">
 
                             <div class="panel-heading">
 
                                 <h3>
-                                    Required Hours
+                                    Hours goal
                                 </h3>
 
                                 <strong id="percentage">
@@ -288,7 +425,9 @@
 
                             </div>
 
+
                             <progress id="goalProgress" max="100" value="0"></progress>
+
 
                             <div class="progress-labels">
 
@@ -297,27 +436,27 @@
                                 </span>
 
                                 <span id="progressRemaining">
-                                    468 remaining
+                                    0 remaining
                                 </span>
 
                             </div>
 
-                            <p class="muted panel-note">
-                                Rendered hours are calculated using
-                                time in, time out, and break duration.
+
+                            <p class="muted">
+                                Hours are calculated from time in,
+                                time out, and your break.
                             </p>
 
                         </article>
 
 
-                        <!-- RECENT -->
 
                         <article class="panel">
 
                             <div class="panel-heading">
 
                                 <h3>
-                                    Recent Logs
+                                    Recent entries
                                 </h3>
 
                                 <button class="text-button" data-page="entries" type="button">
@@ -336,9 +475,161 @@
 
 
 
-                <!-- =========================
-                     DAILY LOGS
-                ========================== -->
+                <!-- =====================================================
+                 CALENDAR
+            ====================================================== -->
+
+                <section class="page" id="calendar">
+
+                    <div class="page-heading">
+
+                        <div>
+
+                            <p class="eyebrow accent">
+                                YOUR OJT CALENDAR
+                            </p>
+
+                            <h1>
+                                Calendar<span class="accent">.</span>
+                            </h1>
+
+                            <p class="muted">
+                                See your attendance and daily logs
+                                in one place.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+
+
+                    <section class="calendar-panel">
+
+                        <div class="calendar-header">
+
+                            <button class="calendar-nav-button" id="calendarPrevious" type="button"
+                                aria-label="Previous month">
+                                <i data-lucide="chevron-left"></i>
+                            </button>
+
+
+                            <div>
+
+                                <h2 id="calendarTitle">
+                                    Month
+                                </h2>
+
+                                <button class="calendar-today-button" id="calendarToday" type="button">
+                                    Today
+                                </button>
+
+                            </div>
+
+
+                            <button class="calendar-nav-button" id="calendarNext" type="button" aria-label="Next month">
+                                <i data-lucide="chevron-right"></i>
+                            </button>
+
+                        </div>
+
+
+
+                        <div class="calendar-legend">
+
+                            <span>
+                                <i class="legend-dot complete"></i>
+                                Log + attendance
+                            </span>
+
+                            <span>
+                                <i class="legend-dot attendance-only"></i>
+                                Attendance only
+                            </span>
+
+                            <span>
+                                <i class="legend-dot log-only"></i>
+                                Log only
+                            </span>
+
+                            <span>
+                                <i class="legend-dot incomplete"></i>
+                                Incomplete
+                            </span>
+
+                        </div>
+
+
+
+                        <div class="calendar-weekdays">
+
+                            <span>Sun</span>
+                            <span>Mon</span>
+                            <span>Tue</span>
+                            <span>Wed</span>
+                            <span>Thu</span>
+                            <span>Fri</span>
+                            <span>Sat</span>
+
+                        </div>
+
+
+                        <div class="calendar-grid" id="calendarGrid"></div>
+
+                    </section>
+
+                </section>
+
+
+
+                <!-- =====================================================
+                 ATTENDANCE HISTORY
+            ====================================================== -->
+
+                <section class="page" id="attendance">
+
+                    <div class="page-heading">
+
+                        <div>
+
+                            <p class="eyebrow accent">
+                                ATTENDANCE RECORD
+                            </p>
+
+                            <h1>
+                                Attendance<span class="accent">.</span>
+                            </h1>
+
+                            <p class="muted">
+                                Review and correct your recorded
+                                time in and time out.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="attendance-history-toolbar">
+
+                        <input id="attendanceMonthFilter" type="month">
+
+                        <button class="button secondary" id="clearAttendanceMonth" type="button">
+                            Show all
+                        </button>
+
+                    </div>
+
+
+                    <div class="attendance-history" id="attendanceHistory"></div>
+
+                </section>
+
+
+
+                <!-- =====================================================
+                 DAILY LOGS
+            ====================================================== -->
 
                 <section class="page" id="entries">
 
@@ -346,65 +637,66 @@
 
                         <div>
 
-                            <p class="section-label">
-                                WORK RECORD
+                            <p class="eyebrow accent">
+                                YOUR WORK LOG
                             </p>
 
                             <h1>
-                                Daily Logs
+                                Daily entries<span class="accent">.</span>
                             </h1>
 
                             <p class="muted">
-                                Keep a record of your internship
-                                tasks and rendered hours.
+                                Record tasks and optional photo
+                                evidence for each OJT day.
                             </p>
 
                         </div>
 
-                        <button class="button primary" data-new type="button">
-                            + Add Entry
+
+                        <button class="button primary" type="button" data-new>
+                            + New Entry
                         </button>
 
                     </div>
 
 
+
                     <!-- FILTERS -->
+
                     <section class="log-tools">
 
                         <div class="log-tools-header">
 
                             <div class="filter-title">
 
-                                <span class="filter-title-icon" aria-hidden="true">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                        stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
-                                        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-                                    </svg>
+                                <span class="filter-title-icon">
+                                    <i data-lucide="list-filter"></i>
                                 </span>
 
+
                                 <div>
-                                    <strong>Filters</strong>
-                                    <small>Search and narrow down your daily logs</small>
+
+                                    <strong>
+                                        Filters
+                                    </strong>
+
+                                    <small>
+                                        Search and narrow down
+                                        your daily logs
+                                    </small>
+
                                 </div>
 
                             </div>
 
 
                             <button class="filter-clear-btn" id="clearEntryFilters" type="button">
-                                <span aria-hidden="true">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                        stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
-                                        <path d="M3 6h18"></path>
-                                        <path d="M8 6V4h8v2"></path>
-                                        <path d="M19 6l-1 14H6L5 6"></path>
-                                        <path d="M10 11v6"></path>
-                                        <path d="M14 11v6"></path>
-                                    </svg>
-                                </span>
-                                <span>Clear</span>
+                                <i data-lucide="rotate-ccw"></i>
+                                Clear
                             </button>
 
                         </div>
+
 
 
                         <div class="filter-grid">
@@ -412,179 +704,125 @@
                             <label class="filter-field filter-field-wide">
 
                                 <span class="field-label">
-                                    <span class="field-label-icon" aria-hidden="true">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                            stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
-                                            <circle cx="11" cy="11" r="8"></circle>
-                                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                                        </svg>
-                                    </span>
+                                    <i data-lucide="search"></i>
                                     Search
                                 </span>
 
+
                                 <div class="field-control">
-                                    <span class="field-icon" aria-hidden="true">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                            stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
-                                            <circle cx="11" cy="11" r="8"></circle>
-                                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                                        </svg>
-                                    </span>
+
+                                    <i data-lucide="search" class="field-icon"></i>
 
                                     <input id="search" class="search" type="search"
                                         placeholder="Search task or description...">
+
                                 </div>
 
                             </label>
 
 
+
                             <label class="filter-field">
 
                                 <span class="field-label">
-                                    <span class="field-label-icon" aria-hidden="true">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                            stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
-                                            <rect x="3" y="4" width="18" height="18" rx="2"></rect>
-                                            <line x1="16" y1="2" x2="16" y2="6"></line>
-                                            <line x1="8" y1="2" x2="8" y2="6"></line>
-                                            <line x1="3" y1="10" x2="21" y2="10"></line>
-                                        </svg>
-                                    </span>
+                                    <i data-lucide="calendar"></i>
                                     From
                                 </span>
 
-                                <div class="field-control">
-                                    <span class="field-icon" aria-hidden="true">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                            stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
-                                            <rect x="3" y="4" width="18" height="18" rx="2"></rect>
-                                            <line x1="16" y1="2" x2="16" y2="6"></line>
-                                            <line x1="8" y1="2" x2="8" y2="6"></line>
-                                            <line x1="3" y1="10" x2="21" y2="10"></line>
-                                        </svg>
-                                    </span>
-
-                                    <input id="filterDateFrom" type="date">
-                                </div>
+                                <input id="filterDateFrom" type="date">
 
                             </label>
+
 
 
                             <label class="filter-field">
 
                                 <span class="field-label">
-                                    <span class="field-label-icon" aria-hidden="true">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                            stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
-                                            <rect x="3" y="4" width="18" height="18" rx="2"></rect>
-                                            <line x1="16" y1="2" x2="16" y2="6"></line>
-                                            <line x1="8" y1="2" x2="8" y2="6"></line>
-                                            <line x1="3" y1="10" x2="21" y2="10"></line>
-                                        </svg>
-                                    </span>
+                                    <i data-lucide="calendar"></i>
                                     To
                                 </span>
 
-                                <div class="field-control">
-                                    <span class="field-icon" aria-hidden="true">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                            stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
-                                            <rect x="3" y="4" width="18" height="18" rx="2"></rect>
-                                            <line x1="16" y1="2" x2="16" y2="6"></line>
-                                            <line x1="8" y1="2" x2="8" y2="6"></line>
-                                            <line x1="3" y1="10" x2="21" y2="10"></line>
-                                        </svg>
-                                    </span>
-
-                                    <input id="filterDateTo" type="date">
-                                </div>
+                                <input id="filterDateTo" type="date">
 
                             </label>
+
 
 
                             <label class="filter-field">
 
                                 <span class="field-label">
-                                    <span class="field-label-icon" aria-hidden="true">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                            stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
-                                            <path d="M3 6h18"></path>
-                                            <path d="M6 12h12"></path>
-                                            <path d="M10 18h4"></path>
-                                        </svg>
-                                    </span>
+                                    <i data-lucide="arrow-down-up"></i>
                                     Sort by
                                 </span>
 
-                                <div class="field-control field-control-select">
-                                    <span class="field-icon" aria-hidden="true">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                            stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
-                                            <path d="M3 6h18"></path>
-                                            <path d="M6 12h12"></path>
-                                            <path d="M10 18h4"></path>
-                                        </svg>
-                                    </span>
+                                <select id="entrySort">
 
-                                    <select id="entrySort">
-                                        <option value="newest">Newest first</option>
-                                        <option value="oldest">Oldest first</option>
-                                        <option value="hours-high">Highest hours</option>
-                                        <option value="hours-low">Lowest hours</option>
-                                        <option value="task-az">Task A–Z</option>
-                                    </select>
-                                </div>
+                                    <option value="newest">
+                                        Newest first
+                                    </option>
+
+                                    <option value="oldest">
+                                        Oldest first
+                                    </option>
+
+                                    <option value="hours-high">
+                                        Highest hours
+                                    </option>
+
+                                    <option value="hours-low">
+                                        Lowest hours
+                                    </option>
+
+                                    <option value="task-az">
+                                        Task A–Z
+                                    </option>
+
+                                </select>
 
                             </label>
+
 
 
                             <label class="filter-field">
 
                                 <span class="field-label">
-                                    <span class="field-label-icon" aria-hidden="true">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                            stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
-                                            <rect x="4" y="4" width="16" height="16" rx="2"></rect>
-                                            <path d="M8 8h8"></path>
-                                            <path d="M8 12h8"></path>
-                                            <path d="M8 16h5"></path>
-                                        </svg>
-                                    </span>
+                                    <i data-lucide="rows-3"></i>
                                     Per page
                                 </span>
 
-                                <div class="field-control field-control-select">
-                                    <span class="field-icon" aria-hidden="true">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                            stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
-                                            <rect x="4" y="4" width="16" height="16" rx="2"></rect>
-                                            <path d="M8 8h8"></path>
-                                            <path d="M8 12h8"></path>
-                                            <path d="M8 16h5"></path>
-                                        </svg>
-                                    </span>
+                                <select id="entriesPerPage">
 
-                                    <select id="entriesPerPage">
-                                        <option value="5">5</option>
-                                        <option value="10" selected>10</option>
-                                        <option value="20">20</option>
-                                    </select>
-                                </div>
+                                    <option value="5">
+                                        5
+                                    </option>
+
+                                    <option value="10" selected>
+                                        10
+                                    </option>
+
+                                    <option value="20">
+                                        20
+                                    </option>
+
+                                </select>
 
                             </label>
 
                         </div>
 
 
+
                         <div class="filter-footer">
 
-                            <span class="muted entries-result-badge" id="entriesResultCount">
+                            <span class="result-count" id="entriesResultCount">
                                 0 entries
                             </span>
 
                         </div>
 
                     </section>
+
+
 
                     <div class="entry-list" id="entriesList"></div>
 
@@ -595,9 +833,9 @@
 
 
 
-                <!-- =========================
-                     WEEKLY REPORT
-                ========================== -->
+                <!-- =====================================================
+                 REPORTS
+            ====================================================== -->
 
                 <section class="page" id="reports">
 
@@ -605,17 +843,16 @@
 
                         <div>
 
-                            <p class="section-label">
-                                DOCUMENTATION
+                            <p class="eyebrow accent">
+                                YOUR DOCUMENTATION
                             </p>
 
                             <h1>
-                                Weekly Report
+                                Reports<span class="accent">.</span>
                             </h1>
 
                             <p class="muted">
-                                Review your logs for a selected week
-                                and export them as a Word document.
+                                Generate weekly or monthly reports.
                             </p>
 
                         </div>
@@ -623,11 +860,28 @@
                     </div>
 
 
-                    <section class="panel report-panel">
+
+                    <div class="report-tabs">
+
+                        <button class="report-tab active" data-report-tab="weekly" type="button">
+                            Weekly
+                        </button>
+
+                        <button class="report-tab" data-report-tab="monthly" type="button">
+                            Monthly
+                        </button>
+
+                    </div>
+
+
+
+                    <!-- WEEKLY -->
+
+                    <section class="panel report-panel report-section active" id="weeklyReportSection">
 
                         <div class="report-controls">
 
-                            <label class="report-date-field">
+                            <label>
 
                                 Choose any date in the week
 
@@ -654,17 +908,76 @@
                         <div class="report-preview" id="reportPreview"></div>
 
 
-                        <div class="report-actions">
+                        <div class="report-export-buttons">
 
-                            <button class="button primary" id="exportButton" type="button">
-                                Download Word Report
+                            <button class="button primary" id="exportWordButton" type="button">
+                                <i data-lucide="file-text"></i>
+                                Word
                             </button>
 
-                            <p class="small-note">
-                                Reports cover Monday through Sunday.
-                                Attached images are included in the
-                                Word document.
-                            </p>
+
+                            <button class="button secondary" id="printWeeklyButton" type="button">
+                                <i data-lucide="printer"></i>
+                                Print / PDF
+                            </button>
+
+
+                            <button class="button secondary" id="exportWeeklyCsv" type="button">
+                                <i data-lucide="sheet"></i>
+                                CSV / Excel
+                            </button>
+
+                        </div>
+
+                    </section>
+
+
+
+                    <!-- MONTHLY -->
+
+                    <section class="panel report-panel report-section" id="monthlyReportSection">
+
+                        <div class="report-controls">
+
+                            <label>
+
+                                Select month
+
+                                <input id="reportMonth" type="month">
+
+                            </label>
+
+
+                            <div class="report-week-info">
+
+                                <span class="muted">
+                                    Monthly total
+                                </span>
+
+                                <strong id="monthlyReportTotal">
+                                    0 hours
+                                </strong>
+
+                            </div>
+
+                        </div>
+
+
+                        <div class="report-preview" id="monthlyReportPreview"></div>
+
+
+                        <div class="report-export-buttons">
+
+                            <button class="button primary" id="printMonthlyButton" type="button">
+                                <i data-lucide="printer"></i>
+                                Print / PDF
+                            </button>
+
+
+                            <button class="button secondary" id="exportMonthlyCsv" type="button">
+                                <i data-lucide="sheet"></i>
+                                CSV / Excel
+                            </button>
 
                         </div>
 
@@ -674,9 +987,9 @@
 
 
 
-                <!-- =========================
-                     SETTINGS
-                ========================== -->
+                <!-- =====================================================
+                 SETTINGS
+            ====================================================== -->
 
                 <section class="page" id="settings">
 
@@ -684,41 +997,129 @@
 
                         <div>
 
-                            <p class="section-label">
+                            <p class="eyebrow accent">
                                 SETTINGS
                             </p>
 
                             <h1>
-                                Tracker Settings
+                                Tracker settings<span class="accent">.</span>
                             </h1>
-
-                            <p class="muted">
-                                Update your student information and
-                                required internship hours.
-                            </p>
 
                         </div>
 
                     </div>
 
 
+
                     <form class="panel settings-panel" id="settingsForm">
 
                         <label>
 
-                            Student Name
+                            Student name
 
-                            <input id="studentName" type="text" maxlength="80" placeholder="Enter your full name"
-                                required>
+                            <input id="studentName" type="text" maxlength="80" required>
 
                         </label>
 
 
                         <label>
 
-                            Required OJT Hours
+                            Required OJT hours
 
                             <input id="hoursGoal" type="number" min="1" max="10000" step="0.5" required>
+
+                        </label>
+
+
+                        <hr>
+
+
+                        <label class="toggle-setting">
+
+                            <span>
+                                <strong>
+                                    Automatic break
+                                </strong>
+
+                                <small>
+                                    Automatically subtract break
+                                    time for long shifts.
+                                </small>
+                            </span>
+
+                            <input id="autoBreakEnabled" type="checkbox">
+
+                        </label>
+
+
+                        <div class="settings-grid">
+
+                            <label>
+
+                                Shift threshold (hours)
+
+                                <input id="autoBreakThreshold" type="number" min="1" max="24" step="0.5">
+
+                            </label>
+
+
+                            <label>
+
+                                Break to subtract (minutes)
+
+                                <input id="autoBreakMinutes" type="number" min="0" max="180">
+
+                            </label>
+
+                        </div>
+
+
+                        <hr>
+
+
+                        <label class="toggle-setting">
+
+                            <span>
+                                <strong>
+                                    Time-out reminder
+                                </strong>
+
+                                <small>
+                                    Remind you if you are still
+                                    timed in.
+                                </small>
+                            </span>
+
+                            <input id="reminderEnabled" type="checkbox">
+
+                        </label>
+
+
+                        <label>
+
+                            Reminder time
+
+                            <input id="reminderTime" type="time">
+
+                        </label>
+
+
+                        <hr>
+
+
+                        <label class="toggle-setting">
+
+                            <span>
+                                <strong>
+                                    Dark mode
+                                </strong>
+
+                                <small>
+                                    Use a darker interface.
+                                </small>
+                            </span>
+
+                            <input id="darkModeToggle" type="checkbox">
 
                         </label>
 
@@ -730,6 +1131,7 @@
                     </form>
 
 
+
                     <section class="panel settings-panel backup-panel">
 
                         <h3>
@@ -737,9 +1139,9 @@
                         </h3>
 
                         <p class="muted">
-                            Your records are stored on this device.
-                            Download a backup before clearing browser
-                            or application data.
+                            Your records are stored locally on this
+                            device. Download a backup before clearing
+                            app or browser data.
                         </p>
 
 
@@ -754,17 +1156,16 @@
 
                                 Import Backup
 
-                                <input id="importBackup" type="file" accept="application/json,.json" hidden>
+                                <input id="importBackup" type="file" accept=".json,application/json" hidden>
 
                             </label>
 
+
+                            <button class="button secondary" id="settingsInstallButton" type="button" hidden>
+                                Install App
+                            </button>
+
                         </div>
-
-
-                        <p class="small-note">
-                            Importing a backup replaces the records
-                            currently saved on this device.
-                        </p>
 
                     </section>
 
@@ -774,7 +1175,7 @@
 
 
             <footer>
-                Over-Time · Student OJT Tracker
+                over-time · Student OJT Tracker
             </footer>
 
         </div>
@@ -783,9 +1184,9 @@
 
 
 
-    <!-- =========================
-         ENTRY FORM
-    ========================== -->
+    <!-- =====================================================
+     ENTRY DIALOG
+====================================================== -->
 
     <dialog id="entryDialog">
 
@@ -795,7 +1196,7 @@
 
                 <div>
 
-                    <p class="section-label">
+                    <p class="eyebrow accent">
                         DAILY LOG
                     </p>
 
@@ -806,7 +1207,7 @@
                 </div>
 
 
-                <button class="icon-button" id="closeForm" type="button" aria-label="Close">
+                <button class="icon-button" id="closeForm" type="button">
                     ×
                 </button>
 
@@ -830,11 +1231,12 @@
 
                         Task
 
-                        <input id="task" maxlength="120" placeholder="e.g. Updated website content" required>
+                        <input id="task" maxlength="120" required placeholder="e.g. Updated website content">
 
                     </label>
 
                 </div>
+
 
 
                 <div class="form-row three">
@@ -884,19 +1286,24 @@
                 </div>
 
 
+                <div class="auto-break-note" id="autoBreakNote"></div>
+
+
                 <div class="hours-preview" id="hoursPreview">
                     Rendered hours: —
                 </div>
+
 
 
                 <label>
 
                     Tasks Accomplished
 
-                    <textarea id="description" rows="5" maxlength="2000"
-                        placeholder="Describe what you worked on today..." required></textarea>
+                    <textarea id="description" rows="5" maxlength="2000" required
+                        placeholder="Describe what you worked on today..."></textarea>
 
                 </label>
+
 
 
                 <label>
@@ -906,13 +1313,17 @@
                     <input id="evidence" type="file" accept="image/png,image/jpeg,image/webp">
 
                     <small>
-                        Optional. PNG, JPG, or WebP up to 2 MB.
+                        Images are compressed before being saved.
                     </small>
 
                 </label>
 
 
                 <p class="small-note" id="attachmentNote"></p>
+
+
+                <p class="draft-status" id="draftStatus"></p>
+
 
                 <p class="error" id="formError"></p>
 
@@ -921,9 +1332,15 @@
 
             <div class="dialog-actions">
 
+                <button class="button secondary" id="saveDraftButton" type="button">
+                    Save Draft
+                </button>
+
+
                 <button class="button secondary" id="cancelForm" type="button">
                     Cancel
                 </button>
+
 
                 <button class="button primary" id="saveButton" type="submit">
                     Save Entry
@@ -937,17 +1354,15 @@
 
 
 
-    <!-- =========================
-         ENTRY DETAILS
-    ========================== -->
+    <!-- =====================================================
+     ENTRY DETAILS
+====================================================== -->
 
     <dialog id="detailDialog">
 
         <div class="dialog-header">
 
-            <h2 id="detailTitle">
-                Entry Details
-            </h2>
+            <h2 id="detailTitle"></h2>
 
             <button class="icon-button" id="closeDetails" type="button">
                 ×
@@ -955,12 +1370,115 @@
 
         </div>
 
+
         <div class="form-body" id="detailContent"></div>
 
     </dialog>
 
 
-    <!-- TOAST -->
+
+    <!-- =====================================================
+     EDIT ATTENDANCE
+====================================================== -->
+
+    <dialog id="attendanceDialog">
+
+        <form id="attendanceForm">
+
+            <div class="dialog-header">
+
+                <h2>
+                    Edit Attendance
+                </h2>
+
+                <button class="icon-button" id="closeAttendanceDialog" type="button">
+                    ×
+                </button>
+
+            </div>
+
+
+            <div class="form-body">
+
+                <input id="attendanceEditId" type="hidden">
+
+
+                <label>
+
+                    Date
+
+                    <input id="attendanceEditDate" type="date" required>
+
+                </label>
+
+
+                <div class="form-row">
+
+                    <label>
+
+                        Time In
+
+                        <input id="attendanceEditTimeIn" type="time" required>
+
+                    </label>
+
+
+                    <label>
+
+                        Time Out
+
+                        <input id="attendanceEditTimeOut" type="time">
+
+                    </label>
+
+                </div>
+
+            </div>
+
+
+            <div class="dialog-actions">
+
+                <button class="button secondary" id="cancelAttendanceEdit" type="button">
+                    Cancel
+                </button>
+
+
+                <button class="button primary" type="submit">
+                    Save
+                </button>
+
+            </div>
+
+        </form>
+
+    </dialog>
+
+
+
+    <!-- =====================================================
+     CALENDAR DAY
+====================================================== -->
+
+    <dialog id="calendarDayDialog">
+
+        <div class="dialog-header">
+
+            <h2 id="calendarDayTitle">
+                Day
+            </h2>
+
+            <button class="icon-button" id="closeCalendarDay" type="button">
+                ×
+            </button>
+
+        </div>
+
+
+        <div class="form-body" id="calendarDayContent"></div>
+
+    </dialog>
+
+
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 

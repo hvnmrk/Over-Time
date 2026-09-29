@@ -1,55 +1,73 @@
 'use strict';
 
-
-/* =================================
-   HELPERS
-================================= */
-
 const $ = id => document.getElementById(id);
 
 
-const DB_NAME = 'proofbook-local-v1';
+/* =====================================================
+   DATABASE
+===================================================== */
+
+const DB_NAME = 'overtime-pwa-v3';
 const STORE_NAME = 'tracker';
 const RECORD_KEY = 'current';
 
-
 let dbPromise;
 
+
+/* =====================================================
+   STATE
+===================================================== */
+
 let entries = [];
+let attendances = [];
 
 let goal = 468;
-
 let studentName = '';
 
 let editingId = null;
 
-let toastTimer;
-
-
-/* pagination */
+let entryDraft = null;
 
 let entriesCurrentPage = 1;
-
 let entriesPageSize = 10;
 
+let calendarDate = new Date();
 
-/* attendance currently in progress */
+let deferredInstallPrompt = null;
 
-let activeAttendance = null;
+let toastTimer;
+
+let reminderAlreadyShown = false;
 
 
-/* =================================
-   DATABASE
-================================= */
+/* SETTINGS */
+
+let settings = {
+
+    autoBreakEnabled: true,
+
+    autoBreakThreshold: 9,
+
+    autoBreakMinutes: 60,
+
+    reminderEnabled: false,
+
+    reminderTime: '17:00',
+
+    darkMode: false
+};
+
+
+/* =====================================================
+   INDEXED DB
+===================================================== */
 
 function openDatabase() {
 
     if (!('indexedDB' in window)) {
 
         return Promise.reject(
-            Error(
-                'This browser does not support IndexedDB.'
-            )
+            Error('IndexedDB is not supported.')
         );
 
     }
@@ -57,50 +75,35 @@ function openDatabase() {
 
     if (!dbPromise) {
 
-        dbPromise = new Promise(
-            (resolve, reject) => {
+        dbPromise = new Promise((resolve, reject) => {
 
-                const request =
-                    indexedDB.open(
-                        DB_NAME,
-                        1
-                    );
+            const request =
+                indexedDB.open(DB_NAME, 1);
 
 
-                request.onupgradeneeded =
-                    () => {
+            request.onupgradeneeded = () => {
 
-                        if (
-                            !request.result
-                                .objectStoreNames
-                                .contains(
-                                    STORE_NAME
-                                )
-                        ) {
+                if (
+                    !request.result.objectStoreNames
+                        .contains(STORE_NAME)
+                ) {
 
-                            request.result
-                                .createObjectStore(
-                                    STORE_NAME
-                                );
+                    request.result
+                        .createObjectStore(STORE_NAME);
 
-                        }
+                }
 
-                    };
+            };
 
 
-                request.onsuccess =
-                    () => resolve(
-                        request.result
-                    );
+            request.onsuccess =
+                () => resolve(request.result);
 
 
-                request.onerror =
-                    () => reject(
-                        request.error
-                    );
+            request.onerror =
+                () => reject(request.error);
 
-            }
-        );
+        });
 
     }
 
@@ -116,134 +119,97 @@ async function loadData() {
         await openDatabase();
 
 
-    return new Promise(
-        (resolve, reject) => {
+    return new Promise((resolve, reject) => {
 
-            const request =
-                db
-                    .transaction(
-                        STORE_NAME,
-                        'readonly'
-                    )
-                    .objectStore(
-                        STORE_NAME
-                    )
-                    .get(
-                        RECORD_KEY
-                    );
+        const request =
+            db.transaction(
+                STORE_NAME,
+                'readonly'
+            )
+                .objectStore(STORE_NAME)
+                .get(RECORD_KEY);
 
 
-            request.onsuccess =
-                () => resolve(
-                    request.result
-                );
+        request.onsuccess =
+            () => resolve(request.result);
 
 
-            request.onerror =
-                () => reject(
-                    request.error
-                );
+        request.onerror =
+            () => reject(request.error);
 
-        }
-    );
+    });
+
 }
 
 
 
-async function saveData(
-    nextEntries = entries,
-    nextGoal = goal,
-    nextName = studentName,
-    nextAttendance = activeAttendance
-) {
+async function saveData() {
 
     const db =
         await openDatabase();
 
 
-    await new Promise(
-        (resolve, reject) => {
+    const state = {
 
-            const transaction =
-                db.transaction(
-                    STORE_NAME,
-                    'readwrite'
-                );
+        entries,
 
+        attendances,
 
-            transaction
-                .objectStore(
-                    STORE_NAME
-                )
-                .put(
-                    {
-                        entries: nextEntries,
+        goal,
 
-                        goal: nextGoal,
+        studentName,
 
-                        studentName:
-                            nextName,
+        settings,
 
-                        activeAttendance:
-                            nextAttendance
-                    },
-
-                    RECORD_KEY
-                );
+        entryDraft
+    };
 
 
-            transaction.oncomplete =
-                resolve;
+    await new Promise((resolve, reject) => {
+
+        const transaction =
+            db.transaction(
+                STORE_NAME,
+                'readwrite'
+            );
 
 
-            transaction.onerror =
-                () => reject(
-                    transaction.error
-                );
+        transaction
+            .objectStore(STORE_NAME)
+            .put(
+                state,
+                RECORD_KEY
+            );
 
 
-            transaction.onabort =
-                () => reject(
-                    transaction.error
-                );
-
-        }
-    );
+        transaction.oncomplete = resolve;
 
 
-    entries = nextEntries;
+        transaction.onerror =
+            () => reject(transaction.error);
 
-    goal = nextGoal;
+    });
 
-    studentName = nextName;
-
-    activeAttendance =
-        nextAttendance;
-
-
-    updateStudentInfo();
 }
 
 
-/* =================================
-   BASIC UTILITIES
-================================= */
+/* =====================================================
+   HELPERS
+===================================================== */
 
 function escapeHTML(value) {
 
-    return String(
-        value ?? ''
-    ).replace(
-        /[&<>"']/g,
-
-        character => ({
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            '"': '&quot;',
-            "'": '&#39;'
-        })[character]
-    );
+    return String(value ?? '')
+        .replace(
+            /[&<>"']/g,
+            character => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            })[character]
+        );
 
 }
 
@@ -251,40 +217,22 @@ function escapeHTML(value) {
 
 function xml(value) {
 
-    return escapeHTML(
-        value
-    ).replace(
-        /\r/g,
-        ''
-    );
+    return escapeHTML(value)
+        .replace(/\r/g, '');
 
 }
 
 
 
-function localDate(
-    date = new Date()
-) {
+function localDate(date = new Date()) {
 
     return [
         date.getFullYear(),
-
-        String(
-            date.getMonth() + 1
-        ).padStart(
-            2,
-            '0'
-        ),
-
-        String(
-            date.getDate()
-        ).padStart(
-            2,
-            '0'
-        )
-    ].join(
-        '-'
-    );
+        String(date.getMonth() + 1)
+            .padStart(2, '0'),
+        String(date.getDate())
+            .padStart(2, '0')
+    ].join('-');
 
 }
 
@@ -292,83 +240,96 @@ function localDate(
 
 function currentTime() {
 
-    const now =
-        new Date();
-
+    const date = new Date();
 
     return [
-        String(
-            now.getHours()
-        ).padStart(
-            2,
-            '0'
-        ),
-
-        String(
-            now.getMinutes()
-        ).padStart(
-            2,
-            '0'
-        )
-    ].join(
-        ':'
-    );
+        String(date.getHours())
+            .padStart(2, '0'),
+        String(date.getMinutes())
+            .padStart(2, '0')
+    ].join(':');
 
 }
 
 
 
-function formatDate(dateValue) {
+function currentMonth() {
 
-    if (!dateValue) {
+    const date = new Date();
+
+    return `${date.getFullYear()}-${String(
+        date.getMonth() + 1
+    ).padStart(2, '0')}`;
+
+}
+
+
+
+function formatDate(value) {
+
+    if (!value) {
         return '—';
     }
 
 
     return new Date(
-        `${dateValue}T12:00:00`
-    ).toLocaleDateString(
-        'en-PH',
-        {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        }
-    );
+        `${value}T12:00:00`
+    )
+        .toLocaleDateString(
+            'en-PH',
+            {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            }
+        );
 
 }
 
 
 
-function formatClockTime(
-    time
-) {
+function formatLongDate(value) {
+
+    if (!value) {
+        return '—';
+    }
+
+
+    return new Date(
+        `${value}T12:00:00`
+    )
+        .toLocaleDateString(
+            'en-PH',
+            {
+                weekday: 'long',
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric'
+            }
+        );
+
+}
+
+
+
+function formatClockTime(time) {
 
     if (!time) {
         return '—';
     }
 
 
-    const [
+    const [hour, minute] =
+        time.split(':').map(Number);
+
+
+    return new Date(
+        2000,
+        0,
+        1,
         hour,
         minute
-    ] =
-        time
-            .split(':')
-            .map(Number);
-
-
-    const date =
-        new Date(
-            2000,
-            0,
-            1,
-            hour,
-            minute
-        );
-
-
-    return date
+    )
         .toLocaleTimeString(
             'en-PH',
             {
@@ -382,14 +343,10 @@ function formatClockTime(
 
 
 
-function fmt(number) {
+function fmt(value) {
 
     return Number(
-        Number(
-            number
-        ).toFixed(
-            2
-        )
+        Number(value).toFixed(2)
     ).toString();
 
 }
@@ -398,20 +355,14 @@ function fmt(number) {
 
 function toast(message) {
 
-    $('toast').textContent =
-        message;
-
+    $('toast').textContent = message;
 
     $('toast')
         .classList
-        .add(
-            'show'
-        );
+        .add('show');
 
 
-    clearTimeout(
-        toastTimer
-    );
+    clearTimeout(toastTimer);
 
 
     toastTimer =
@@ -420,27 +371,131 @@ function toast(message) {
 
                 $('toast')
                     .classList
-                    .remove(
-                        'show'
-                    );
+                    .remove('show');
 
             },
-
             3000
         );
 
 }
 
 
-/* =================================
-   USER INFO
-================================= */
+
+function refreshIcons() {
+
+    if (window.lucide) {
+
+        window.lucide.createIcons();
+
+    }
+
+}
+
+
+/* =====================================================
+   INITIALIZATION
+===================================================== */
+
+async function initialize() {
+
+    try {
+
+        const stored =
+            await loadData();
+
+
+        entries =
+            Array.isArray(stored?.entries)
+                ? stored.entries
+                : [];
+
+
+        attendances =
+            Array.isArray(stored?.attendances)
+                ? stored.attendances
+                : [];
+
+
+        goal =
+            Number(stored?.goal) > 0
+                ? Number(stored.goal)
+                : 468;
+
+
+        studentName =
+            typeof stored?.studentName === 'string'
+                ? stored.studentName
+                : '';
+
+
+        settings = {
+
+            ...settings,
+
+            ...(stored?.settings || {})
+        };
+
+
+        entryDraft =
+            stored?.entryDraft || null;
+
+
+        $('weekDate').value =
+            localDate();
+
+
+        $('reportMonth').value =
+            currentMonth();
+
+
+        $('attendanceMonthFilter').value =
+            currentMonth();
+
+
+        updateStudentInfo();
+
+        updateSettingsForm();
+
+        applyDarkMode();
+
+        render();
+
+        updateConnectionStatus();
+
+        registerPWA();
+
+        checkReminder();
+
+
+        setInterval(
+            checkReminder,
+            60000
+        );
+
+
+        refreshIcons();
+
+    } catch (error) {
+
+        console.error(error);
+
+        toast(
+            'Could not open local data.'
+        );
+
+    }
+
+}
+
+
+/* =====================================================
+   USER
+===================================================== */
 
 function updateStudentInfo() {
 
     const name =
-        studentName ||
-        'Student';
+        studentName || 'Student';
 
 
     $('profileName')
@@ -448,27 +503,15 @@ function updateStudentInfo() {
         name;
 
 
-    $('overviewName')
-        .textContent =
-        name.split(
-            ' '
-        )[0];
-
-
     $('profileAvatar')
         .textContent =
         studentName
+
             ? studentName
                 .split(/\s+/)
                 .filter(Boolean)
-                .map(
-                    value =>
-                        value[0]
-                )
-                .slice(
-                    0,
-                    2
-                )
+                .map(item => item[0])
+                .slice(0, 2)
                 .join('')
                 .toUpperCase()
 
@@ -485,128 +528,18 @@ function updateStudentInfo() {
 }
 
 
-/* =================================
-   INITIALIZE
-================================= */
-
-async function initialize() {
-
-    try {
-
-        const stored =
-            await loadData();
-
-
-        entries =
-            Array.isArray(
-                stored?.entries
-            )
-                ? stored.entries
-                : [];
-
-
-        goal =
-            Number(
-                stored?.goal
-            ) > 0
-                ? Number(
-                    stored.goal
-                )
-                : 468;
-
-
-        studentName =
-            typeof stored?.studentName
-                === 'string'
-                ? stored.studentName
-                : '';
-
-
-        activeAttendance =
-            stored?.activeAttendance &&
-                typeof stored.activeAttendance
-                === 'object'
-
-                ? stored.activeAttendance
-
-                : null;
-
-
-        updateStudentInfo();
-
-
-        $('weekDate').value =
-            localDate();
-
-
-        updateTodayDisplay();
-
-        render();
-
-    } catch (error) {
-
-        console.error(
-            error
-        );
-
-
-        toast(
-            'Could not open local data.'
-        );
-
-    }
-
-}
-
-
-
-function updateTodayDisplay() {
-
-    const now =
-        new Date();
-
-
-    $('today').textContent =
-        now.toLocaleDateString(
-            'en-PH',
-            {
-                weekday: 'short',
-                month: 'short',
-                day: 'numeric'
-            }
-        );
-
-
-    $('attendanceDate')
-        .textContent =
-        now.toLocaleDateString(
-            'en-PH',
-            {
-                weekday: 'long',
-                month: 'long',
-                day: 'numeric',
-                year: 'numeric'
-            }
-        );
-
-}
-
-
-/* =================================
+/* =====================================================
    NAVIGATION
-================================= */
+===================================================== */
 
 function closeMenu() {
 
     $('sidebar')
         .classList
-        .remove(
-            'open'
-        );
+        .remove('open');
 
 
-    $('backdrop').hidden =
-        true;
+    $('backdrop').hidden = true;
 
 }
 
@@ -615,15 +548,12 @@ function closeMenu() {
 $('menuButton')
     .addEventListener(
         'click',
-
         () => {
 
             const open =
                 $('sidebar')
                     .classList
-                    .toggle(
-                        'open'
-                    );
+                    .toggle('open');
 
 
             $('backdrop').hidden =
@@ -643,371 +573,190 @@ $('backdrop')
 
 function switchPage(page) {
 
-    const validPages = [
-        'overview',
-        'entries',
-        'reports',
-        'settings'
-    ];
+    const pages = {
+
+        overview: 'Dashboard',
+
+        calendar: 'Calendar',
+
+        attendance: 'Attendance',
+
+        entries: 'Daily Logs',
+
+        reports: 'Reports',
+
+        settings: 'Settings'
+    };
 
 
-    if (
-        !validPages.includes(
-            page
-        )
-    ) {
+    if (!pages[page]) {
         return;
     }
 
 
     document
-        .querySelectorAll(
-            '.page'
-        )
-        .forEach(
-            element => {
+        .querySelectorAll('.page')
+        .forEach(element => {
 
-                element
-                    .classList
-                    .toggle(
-                        'active',
+            element.classList.toggle(
+                'active',
+                element.id === page
+            );
 
-                        element.id
-                        === page
-                    );
-
-            }
-        );
+        });
 
 
     document
-        .querySelectorAll(
-            '.nav-link'
-        )
-        .forEach(
-            element => {
+        .querySelectorAll('.nav-link')
+        .forEach(element => {
 
-                element
-                    .classList
-                    .toggle(
-                        'active',
+            element.classList.toggle(
+                'active',
+                element.dataset.page === page
+            );
 
-                        element.dataset.page
-                        === page
-                    );
-
-            }
-        );
+        });
 
 
-    const names = {
-        overview:
-            'Dashboard',
-
-        entries:
-            'Daily Logs',
-
-        reports:
-            'Weekly Report',
-
-        settings:
-            'Settings'
-    };
+    $('pageTitle')
+        .textContent =
+        pages[page];
 
 
-    $('pageTitle').textContent =
-        names[page];
+    if (page === 'calendar') {
+        renderCalendar();
+    }
+
+
+    if (page === 'attendance') {
+        renderAttendanceHistory();
+    }
 
 
     closeMenu();
 
 
-    window.scrollTo(
-        {
-            top: 0,
-            behavior: 'smooth'
-        }
-    );
+    window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+    });
+
+
+    refreshIcons();
 
 }
 
 
-/* =================================
-   SETTINGS
-================================= */
+/* =====================================================
+   TIME CALCULATIONS
+===================================================== */
 
-$('settingsForm')
-    .addEventListener(
-        'submit',
+function getShiftMinutes(start, end) {
 
-        async event => {
+    if (!start || !end) {
+        return null;
+    }
 
-            event.preventDefault();
 
+    const [sh, sm] =
+        start.split(':').map(Number);
 
-            const name =
-                $('studentName')
-                    .value
-                    .trim();
 
+    const [eh, em] =
+        end.split(':').map(Number);
 
-            const newGoal =
-                Number(
-                    $('hoursGoal')
-                        .value
-                );
 
+    const result =
+        (eh * 60 + em) -
+        (sh * 60 + sm);
 
-            if (!name) {
 
-                toast(
-                    'Enter your name.'
-                );
+    return result > 0
+        ? result
+        : null;
 
-                return;
+}
 
-            }
 
 
-            if (
-                !Number.isFinite(
-                    newGoal
-                ) ||
-                newGoal < 1 ||
-                newGoal > 10000
-            ) {
+function getAutomaticBreak(start, end) {
 
-                toast(
-                    'Enter a valid required-hours value.'
-                );
+    if (!settings.autoBreakEnabled) {
+        return null;
+    }
 
-                return;
 
-            }
+    const duration =
+        getShiftMinutes(
+            start,
+            end
+        );
 
 
-            try {
+    if (duration === null) {
+        return null;
+    }
 
-                await saveData(
-                    entries,
-                    newGoal,
-                    name,
-                    activeAttendance
-                );
 
+    if (
+        duration >=
+        settings.autoBreakThreshold * 60
+    ) {
 
-                render();
+        return Number(
+            settings.autoBreakMinutes
+        );
 
+    }
 
-                toast(
-                    'Settings saved.'
-                );
 
-            } catch {
+    return 0;
 
-                toast(
-                    'Could not save settings.'
-                );
+}
 
-            }
 
-        }
-    );
 
+function applyAutomaticBreak() {
 
-/* =================================
-   BACKUP
-================================= */
+    const automaticBreak =
+        getAutomaticBreak(
+            $('timeIn').value,
+            $('timeOut').value
+        );
 
-$('backupButton')
-    .addEventListener(
-        'click',
 
-        () => {
+    if (automaticBreak === null) {
 
-            const backup =
-                JSON.stringify(
-                    {
-                        format:
-                            'overtime-backup-v2',
+        $('autoBreakNote')
+            .textContent =
+            '';
 
-                        savedAt:
-                            new Date()
-                                .toISOString(),
+        return;
 
-                        studentName,
+    }
 
-                        goal,
 
-                        entries,
+    $('breakMinutes').value =
+        automaticBreak;
 
-                        activeAttendance
-                    },
 
-                    null,
-                    2
-                );
+    if (automaticBreak > 0) {
 
+        $('autoBreakNote')
+            .textContent =
+            `Automatic break applied: ${automaticBreak} minutes.`;
 
-            const blob =
-                new Blob(
-                    [backup],
-                    {
-                        type:
-                            'application/json'
-                    }
-                );
+    } else {
 
+        $('autoBreakNote')
+            .textContent =
+            'No automatic break is required for this shift.';
 
-            const url =
-                URL.createObjectURL(
-                    blob
-                );
+    }
 
+}
 
-            const link =
-                document
-                    .createElement(
-                        'a'
-                    );
 
-
-            link.href =
-                url;
-
-
-            link.download =
-                `OverTime_Backup_${localDate()}.json`;
-
-
-            document.body
-                .append(
-                    link
-                );
-
-
-            link.click();
-
-            link.remove();
-
-
-            setTimeout(
-                () =>
-                    URL.revokeObjectURL(
-                        url
-                    ),
-
-                30000
-            );
-
-
-            toast(
-                'Backup downloaded.'
-            );
-
-        }
-    );
-
-
-
-$('importBackup')
-    .addEventListener(
-        'change',
-
-        async event => {
-
-            const file =
-                event.target
-                    .files?.[0];
-
-
-            event.target.value =
-                '';
-
-
-            if (!file) {
-                return;
-            }
-
-
-            try {
-
-                const backup =
-                    JSON.parse(
-                        await file.text()
-                    );
-
-
-                if (
-                    !Array.isArray(
-                        backup.entries
-                    ) ||
-                    !Number.isFinite(
-                        Number(
-                            backup.goal
-                        )
-                    )
-                ) {
-
-                    throw Error(
-                        'Invalid backup.'
-                    );
-
-                }
-
-
-                if (
-                    !confirm(
-                        `Replace your current data with ${backup.entries.length} imported entries?`
-                    )
-                ) {
-                    return;
-                }
-
-
-                await saveData(
-                    backup.entries,
-
-                    Number(
-                        backup.goal
-                    ),
-
-                    String(
-                        backup.studentName ||
-                        ''
-                    ),
-
-                    backup.activeAttendance ||
-                    null
-                );
-
-
-                entriesCurrentPage =
-                    1;
-
-
-                render();
-
-
-                toast(
-                    'Backup imported.'
-                );
-
-            } catch {
-
-                toast(
-                    'Could not import this backup.'
-                );
-
-            }
-
-        }
-    );
-
-
-/* =================================
-   HOURS
-================================= */
 
 function calculateHours(
     start,
@@ -1015,61 +764,24 @@ function calculateHours(
     breakValue
 ) {
 
-    if (
-        !start ||
-        !end ||
-        breakValue === ''
-    ) {
-
-        return null;
-
-    }
-
-
-    const [
-        startHour,
-        startMinute
-    ] =
-        start
-            .split(':')
-            .map(Number);
-
-
-    const [
-        endHour,
-        endMinute
-    ] =
-        end
-            .split(':')
-            .map(Number);
-
-
-    const startMinutes =
-        startHour * 60 +
-        startMinute;
-
-
-    const endMinutes =
-        endHour * 60 +
-        endMinute;
-
-
     const duration =
-        endMinutes -
-        startMinutes;
-
-
-    const breakMinutes =
-        Number(
-            breakValue
+        getShiftMinutes(
+            start,
+            end
         );
 
 
+    if (duration === null) {
+        return null;
+    }
+
+
+    const breakMinutes =
+        Number(breakValue);
+
+
     if (
-        duration <= 0 ||
-        !Number.isFinite(
-            breakMinutes
-        ) ||
+        !Number.isFinite(breakMinutes) ||
         breakMinutes < 0 ||
         breakMinutes >= duration
     ) {
@@ -1084,8 +796,10 @@ function calculateHours(
             (
                 duration -
                 breakMinutes
-            ) / 60
-        ) * 100
+            ) /
+            60
+        ) *
+        100
     ) / 100;
 
 }
@@ -1093,6 +807,17 @@ function calculateHours(
 
 
 function updatePreview() {
+
+    if (
+        settings.autoBreakEnabled &&
+        $('timeIn').value &&
+        $('timeOut').value
+    ) {
+
+        applyAutomaticBreak();
+
+    }
+
 
     const hours =
         calculateHours(
@@ -1105,7 +830,9 @@ function updatePreview() {
     $('hoursPreview')
         .textContent =
         hours === null
+
             ? 'Rendered hours: —'
+
             : `Rendered hours: ${fmt(hours)} hrs`;
 
 }
@@ -1114,91 +841,116 @@ function updatePreview() {
 
 [
     'timeIn',
-    'timeOut',
-    'breakMinutes'
+    'timeOut'
 ]
-    .forEach(
-        id => {
+    .forEach(id => {
 
-            $(id)
-                .addEventListener(
-                    'input',
-                    updatePreview
+        $(id).addEventListener(
+            'input',
+            updatePreview
+        );
+
+    });
+
+
+$('breakMinutes')
+    .addEventListener(
+        'input',
+        () => {
+
+            const hours =
+                calculateHours(
+                    $('timeIn').value,
+                    $('timeOut').value,
+                    $('breakMinutes').value
                 );
+
+
+            $('hoursPreview')
+                .textContent =
+                hours === null
+
+                    ? 'Rendered hours: —'
+
+                    : `Rendered hours: ${fmt(hours)} hrs`;
 
         }
     );
 
 
-/* =================================
-   CURRENT TIME BUTTONS
-================================= */
 
 $('timeInNow')
     .addEventListener(
         'click',
-
         () => {
-
-            $('timeIn').value =
-                currentTime();
-
 
             $('entryDate').value =
                 localDate();
 
+            $('timeIn').value =
+                currentTime();
 
             updatePreview();
 
-
-            toast(
-                `Time in set to ${formatClockTime(
-                    $('timeIn').value
-                )}.`
-            );
-
         }
     );
+
 
 
 $('timeOutNow')
     .addEventListener(
         'click',
-
         () => {
 
             $('timeOut').value =
                 currentTime();
 
-
             updatePreview();
-
-
-            toast(
-                `Time out set to ${formatClockTime(
-                    $('timeOut').value
-                )}.`
-            );
 
         }
     );
 
 
-/* =================================
-   QUICK ATTENDANCE
-================================= */
+/* =====================================================
+   ATTENDANCE
+===================================================== */
+
+function attendanceForDate(date) {
+
+    return attendances.find(
+        attendance =>
+            attendance.date === date
+    );
+
+}
+
+
+
+function entryForDate(date) {
+
+    return entries.find(
+        entry =>
+            entry.date === date
+    );
+
+}
+
+
 
 $('quickTimeIn')
     .addEventListener(
         'click',
-
         async () => {
 
-            if (
-                activeAttendance &&
-                activeAttendance.date
-                === localDate()
-            ) {
+            const date =
+                localDate();
+
+
+            let attendance =
+                attendanceForDate(date);
+
+
+            if (attendance?.timeIn) {
 
                 toast(
                     'You already timed in today.'
@@ -1209,44 +961,47 @@ $('quickTimeIn')
             }
 
 
-            const attendance = {
-                date:
-                    localDate(),
+            if (!attendance) {
 
-                timeIn:
-                    currentTime(),
+                attendance = {
 
-                timeOut:
-                    null
-            };
+                    id:
+                        crypto.randomUUID(),
+
+                    date,
+
+                    timeIn:
+                        currentTime(),
+
+                    timeOut:
+                        '',
+
+                    createdAt:
+                        Date.now()
+                };
 
 
-            try {
-
-                await saveData(
-                    entries,
-                    goal,
-                    studentName,
+                attendances.unshift(
                     attendance
                 );
 
+            } else {
 
-                renderAttendance();
-
-
-                toast(
-                    `Timed in at ${formatClockTime(
-                        attendance.timeIn
-                    )}.`
-                );
-
-            } catch {
-
-                toast(
-                    'Could not save time in.'
-                );
+                attendance.timeIn =
+                    currentTime();
 
             }
+
+
+            await saveData();
+
+            render();
+
+            toast(
+                `Timed in at ${formatClockTime(
+                    attendance.timeIn
+                )}.`
+            );
 
         }
     );
@@ -1256,13 +1011,17 @@ $('quickTimeIn')
 $('quickTimeOut')
     .addEventListener(
         'click',
-
         async () => {
 
+            const attendance =
+                attendanceForDate(
+                    localDate()
+                );
+
+
             if (
-                !activeAttendance ||
-                activeAttendance.date
-                !== localDate()
+                !attendance ||
+                !attendance.timeIn
             ) {
 
                 toast(
@@ -1274,9 +1033,7 @@ $('quickTimeOut')
             }
 
 
-            if (
-                activeAttendance.timeOut
-            ) {
+            if (attendance.timeOut) {
 
                 toast(
                     'You already timed out.'
@@ -1287,86 +1044,75 @@ $('quickTimeOut')
             }
 
 
-            const completed = {
-                ...activeAttendance,
-
-                timeOut:
-                    currentTime()
-            };
-
-
-            try {
-
-                await saveData(
-                    entries,
-                    goal,
-                    studentName,
-                    completed
+            const confirmed =
+                confirm(
+                    `Time out now at ${formatClockTime(
+                        currentTime()
+                    )}?`
                 );
 
 
-                renderAttendance();
-
-
-                /*
-                    Open the entry form and copy today's
-                    attendance into Time In and Time Out.
-                */
-
-                openForm();
-
-
-                $('entryDate').value =
-                    completed.date;
-
-
-                $('timeIn').value =
-                    completed.timeIn;
-
-
-                $('timeOut').value =
-                    completed.timeOut;
-
-
-                updatePreview();
-
-
-                toast(
-                    'Time out recorded. Complete your daily log.'
-                );
-
-            } catch {
-
-                toast(
-                    'Could not save time out.'
-                );
-
+            if (!confirmed) {
+                return;
             }
+
+
+            attendance.timeOut =
+                currentTime();
+
+
+            await saveData();
+
+            render();
+
+
+            openForm();
+
+
+            $('entryDate').value =
+                attendance.date;
+
+
+            $('timeIn').value =
+                attendance.timeIn;
+
+
+            $('timeOut').value =
+                attendance.timeOut;
+
+
+            updatePreview();
+
+
+            toast(
+                'Time out recorded. Complete your daily log.'
+            );
 
         }
     );
 
 
 
-function renderAttendance() {
+function renderTodayAttendance() {
 
     const today =
         localDate();
 
 
     const attendance =
-        activeAttendance?.date
-            === today
-            ? activeAttendance
-            : null;
+        attendanceForDate(today);
 
 
-    const timeInButton =
-        $('quickTimeIn');
+    $('attendanceDate')
+        .textContent =
+        formatLongDate(today);
 
 
-    const timeOutButton =
-        $('quickTimeOut');
+    const warning =
+        $('attendanceWarning');
+
+
+    warning.hidden = true;
 
 
     if (!attendance) {
@@ -1381,11 +1127,11 @@ function renderAttendance() {
             '';
 
 
-        timeInButton.disabled =
+        $('quickTimeIn').disabled =
             false;
 
 
-        timeOutButton.disabled =
+        $('quickTimeOut').disabled =
             true;
 
 
@@ -1406,6 +1152,7 @@ function renderAttendance() {
 
         $('attendanceTimes')
             .innerHTML = `
+
                 <span>
                     Time In:
                     <strong>
@@ -1417,12 +1164,22 @@ function renderAttendance() {
             `;
 
 
-        timeInButton.disabled =
+        $('quickTimeIn').disabled =
             true;
 
 
-        timeOutButton.disabled =
+        $('quickTimeOut').disabled =
             false;
+
+
+        warning.hidden = false;
+
+
+        $('attendanceWarningText')
+            .textContent =
+            `You timed in at ${formatClockTime(
+                attendance.timeIn
+            )} but have not timed out yet.`;
 
 
         return;
@@ -1437,6 +1194,7 @@ function renderAttendance() {
 
     $('attendanceTimes')
         .innerHTML = `
+
             <span>
                 Time In:
                 <strong>
@@ -1457,68 +1215,285 @@ function renderAttendance() {
         `;
 
 
-    timeInButton.disabled =
+    $('quickTimeIn').disabled =
         true;
 
 
-    timeOutButton.disabled =
+    $('quickTimeOut').disabled =
         true;
 
 }
 
 
-/* =================================
-   ENTRY SORTING
-================================= */
+/* ATTENDANCE HISTORY */
 
-function sorted() {
+function renderAttendanceHistory() {
+
+    const filter =
+        $('attendanceMonthFilter').value;
+
+
+    let selected =
+        [...attendances]
+            .sort(
+                (a, b) =>
+                    b.date.localeCompare(a.date)
+            );
+
+
+    if (filter) {
+
+        selected =
+            selected.filter(
+                attendance =>
+                    attendance.date.startsWith(
+                        filter
+                    )
+            );
+
+    }
+
+
+    if (!selected.length) {
+
+        $('attendanceHistory')
+            .innerHTML = `
+
+                <div class="empty">
+                    No attendance records found.
+                </div>
+            `;
+
+        return;
+
+    }
+
+
+    $('attendanceHistory')
+        .innerHTML =
+        selected.map(
+            attendance => `
+
+                <article class="
+                    attendance-record
+                    ${!attendance.timeOut
+                    ? 'incomplete'
+                    : ''
+                }
+                ">
+
+                    <div>
+
+                        <strong>
+                            ${formatDate(
+                    attendance.date
+                )}
+                        </strong>
+
+                        <small>
+                            ${attendance.timeOut
+                    ? 'Complete'
+                    : 'Incomplete attendance'
+                }
+                        </small>
+
+                    </div>
+
+
+                    <div class="attendance-time-value">
+
+                        <span>
+                            TIME IN
+                        </span>
+
+                        ${formatClockTime(
+                    attendance.timeIn
+                )}
+
+                    </div>
+
+
+                    <div class="attendance-time-value">
+
+                        <span>
+                            TIME OUT
+                        </span>
+
+                        ${formatClockTime(
+                    attendance.timeOut
+                )}
+
+                    </div>
+
+
+                    <button
+                        class="attendance-edit-button"
+                        data-edit-attendance="${attendance.id}"
+                        type="button"
+                    >
+                        Edit
+                    </button>
+
+                </article>
+            `
+        ).join('');
+
+}
+
+
+
+$('attendanceMonthFilter')
+    .addEventListener(
+        'change',
+        renderAttendanceHistory
+    );
+
+
+$('clearAttendanceMonth')
+    .addEventListener(
+        'click',
+        () => {
+
+            $('attendanceMonthFilter').value =
+                '';
+
+            renderAttendanceHistory();
+
+        }
+    );
+
+
+
+function openAttendanceEdit(id) {
+
+    const attendance =
+        attendances.find(
+            item => item.id === id
+        );
+
+
+    if (!attendance) {
+        return;
+    }
+
+
+    $('attendanceEditId').value =
+        attendance.id;
+
+
+    $('attendanceEditDate').value =
+        attendance.date;
+
+
+    $('attendanceEditTimeIn').value =
+        attendance.timeIn || '';
+
+
+    $('attendanceEditTimeOut').value =
+        attendance.timeOut || '';
+
+
+    $('attendanceDialog')
+        .showModal();
+
+}
+
+
+
+$('attendanceForm')
+    .addEventListener(
+        'submit',
+        async event => {
+
+            event.preventDefault();
+
+
+            const attendance =
+                attendances.find(
+                    item =>
+                        item.id ===
+                        $('attendanceEditId').value
+                );
+
+
+            if (!attendance) {
+                return;
+            }
+
+
+            attendance.date =
+                $('attendanceEditDate').value;
+
+
+            attendance.timeIn =
+                $('attendanceEditTimeIn').value;
+
+
+            attendance.timeOut =
+                $('attendanceEditTimeOut').value;
+
+
+            await saveData();
+
+
+            $('attendanceDialog')
+                .close();
+
+
+            render();
+
+
+            toast(
+                'Attendance updated.'
+            );
+
+        }
+    );
+
+
+$('closeAttendanceDialog')
+    .addEventListener(
+        'click',
+        () =>
+            $('attendanceDialog')
+                .close()
+    );
+
+
+$('cancelAttendanceEdit')
+    .addEventListener(
+        'click',
+        () =>
+            $('attendanceDialog')
+                .close()
+    );
+
+
+/* =====================================================
+   DASHBOARD RENDER
+===================================================== */
+
+function sortedEntries() {
 
     return [...entries]
         .sort(
-            (a, b) => {
-
-                return (
-                    b.date.localeCompare(
-                        a.date
-                    ) ||
-
-                    Number(
-                        b.createdAt || 0
-                    ) -
-
-                    Number(
-                        a.createdAt || 0
-                    )
-                );
-
-            }
+            (a, b) =>
+                b.date.localeCompare(a.date) ||
+                Number(b.createdAt || 0) -
+                Number(a.createdAt || 0)
         );
 
 }
 
 
-/* =================================
-   MAIN RENDER
-================================= */
 
 function render() {
 
     const total =
         entries.reduce(
-            (
-                sum,
-                entry
-            ) => {
-
-                return (
-                    sum +
-                    Number(
-                        entry.hours || 0
-                    )
-                );
-
-            },
-
+            (sum, entry) =>
+                sum +
+                Number(entry.hours || 0),
             0
         );
 
@@ -1530,71 +1505,69 @@ function render() {
         );
 
 
-    const percent =
+    const percentage =
         goal > 0
             ? Math.min(
                 100,
-
                 Math.round(
                     total /
                     goal *
                     100
                 )
             )
-
             : 0;
 
 
-    $('renderedHours')
-        .textContent =
-        fmt(
-            total
-        );
+    $('renderedHours').textContent =
+        fmt(total);
 
 
-    $('requiredHours')
-        .textContent =
-        fmt(
-            goal
-        );
+    $('requiredHours').textContent =
+        fmt(goal);
 
 
-    $('entryCount')
-        .textContent =
+    $('entryCount').textContent =
         entries.length;
 
 
-    $('remainingHours')
-        .textContent =
-        `${fmt(remaining)} hours remaining`;
+    $('remainingHours').textContent =
+        `${fmt(remaining)} hours to go`;
 
 
-    $('percentage')
-        .textContent =
-        `${percent}%`;
+    $('percentage').textContent =
+        `${percentage}%`;
 
 
     $('goalProgress').value =
-        percent;
+        percentage;
 
 
-    $('progressRendered')
-        .textContent =
+    $('progressRendered').textContent =
         `${fmt(total)} rendered`;
 
 
-    $('progressRemaining')
-        .textContent =
+    $('progressRemaining').textContent =
         `${fmt(remaining)} remaining`;
 
 
     renderRecentEntries();
 
+    renderTodayAttendance();
+
+    renderMonthSummary();
+
     renderEntries();
 
-    renderReport();
+    renderCalendar();
 
-    renderAttendance();
+    renderAttendanceHistory();
+
+    renderWeeklyReport();
+
+    renderMonthlyReport();
+
+
+    refreshIcons();
 
 }
 
@@ -1603,38 +1576,20 @@ function render() {
 function renderRecentEntries() {
 
     const recent =
-        sorted()
-            .slice(
-                0,
-                3
-            );
-
-
-    if (!recent.length) {
-
-        $('recentEntries')
-            .innerHTML = `
-                <div class="empty">
-                    No daily logs yet.
-                </div>
-            `;
-
-        return;
-
-    }
+        sortedEntries()
+            .slice(0, 3);
 
 
     $('recentEntries')
         .innerHTML =
-        recent
-            .map(
+        recent.length
+
+            ? recent.map(
                 entry => `
 
                     <button
                         class="recent-item"
-                        data-detail="${escapeHTML(
-                    entry.id
-                )}"
+                        data-detail="${entry.id}"
                         type="button"
                     >
 
@@ -1661,17 +1616,423 @@ function renderRecentEntries() {
                         </b>
 
                     </button>
-
                 `
-            )
-            .join('');
+            ).join('')
+
+            : `
+                <div class="empty">
+                    Your first work day starts here.
+                </div>
+            `;
 
 }
 
 
-/* =================================
-   ENTRY FILTERS + PAGINATION
-================================= */
+
+function renderMonthSummary() {
+
+    const month =
+        currentMonth();
+
+
+    $('monthLogCount')
+        .textContent =
+        entries.filter(
+            item =>
+                item.date.startsWith(month)
+        ).length;
+
+
+    const monthlyAttendance =
+        attendances.filter(
+            item =>
+                item.date.startsWith(month)
+        );
+
+
+    $('monthAttendanceCount')
+        .textContent =
+        monthlyAttendance.length;
+
+
+    $('monthIncompleteCount')
+        .textContent =
+        monthlyAttendance.filter(
+            item =>
+                !item.timeOut
+        ).length;
+
+}
+
+
+/* =====================================================
+   CALENDAR
+===================================================== */
+
+$('calendarPrevious')
+    .addEventListener(
+        'click',
+        () => {
+
+            calendarDate =
+                new Date(
+                    calendarDate.getFullYear(),
+                    calendarDate.getMonth() - 1,
+                    1
+                );
+
+
+            renderCalendar();
+
+        }
+    );
+
+
+$('calendarNext')
+    .addEventListener(
+        'click',
+        () => {
+
+            calendarDate =
+                new Date(
+                    calendarDate.getFullYear(),
+                    calendarDate.getMonth() + 1,
+                    1
+                );
+
+
+            renderCalendar();
+
+        }
+    );
+
+
+$('calendarToday')
+    .addEventListener(
+        'click',
+        () => {
+
+            calendarDate =
+                new Date();
+
+
+            renderCalendar();
+
+        }
+    );
+
+
+
+function calendarDayState(date) {
+
+    const attendance =
+        attendanceForDate(date);
+
+
+    const log =
+        entryForDate(date);
+
+
+    if (
+        attendance &&
+        !attendance.timeOut
+    ) {
+
+        return {
+            className: 'incomplete',
+            text: 'Incomplete'
+        };
+
+    }
+
+
+    if (
+        attendance &&
+        log
+    ) {
+
+        return {
+            className: 'complete',
+            text: 'Completed'
+        };
+
+    }
+
+
+    if (attendance) {
+
+        return {
+            className: 'attendance-only',
+            text: 'Attendance'
+        };
+
+    }
+
+
+    if (log) {
+
+        return {
+            className: 'log-only',
+            text: 'Daily log'
+        };
+
+    }
+
+
+    return null;
+
+}
+
+
+
+function renderCalendar() {
+
+    const year =
+        calendarDate.getFullYear();
+
+
+    const month =
+        calendarDate.getMonth();
+
+
+    $('calendarTitle')
+        .textContent =
+        calendarDate
+            .toLocaleDateString(
+                'en-PH',
+                {
+                    month: 'long',
+                    year: 'numeric'
+                }
+            );
+
+
+    const firstDay =
+        new Date(
+            year,
+            month,
+            1
+        );
+
+
+    const gridStart =
+        new Date(
+            year,
+            month,
+            1 - firstDay.getDay()
+        );
+
+
+    let html = '';
+
+
+    for (
+        let index = 0;
+        index < 42;
+        index++
+    ) {
+
+        const date =
+            new Date(gridStart);
+
+
+        date.setDate(
+            gridStart.getDate() +
+            index
+        );
+
+
+        const dateString =
+            localDate(date);
+
+
+        const outside =
+            date.getMonth() !== month;
+
+
+        const today =
+            dateString === localDate();
+
+
+        const state =
+            calendarDayState(
+                dateString
+            );
+
+
+        html += `
+
+            <button
+                class="
+                    calendar-day
+                    ${outside ? 'outside' : ''}
+                    ${today ? 'today' : ''}
+                "
+                data-calendar-date="${dateString}"
+                type="button"
+            >
+
+                <span class="calendar-date-number">
+                    ${date.getDate()}
+                </span>
+
+
+                <div class="calendar-day-status">
+
+                    ${state
+                ? `
+                                <span class="
+                                    calendar-status-item
+                                    ${state.className}
+                                ">
+                                    ${state.text}
+                                </span>
+                            `
+                : ''
+            }
+
+                </div>
+
+            </button>
+        `;
+
+    }
+
+
+    $('calendarGrid')
+        .innerHTML =
+        html;
+
+}
+
+
+
+function openCalendarDay(date) {
+
+    const attendance =
+        attendanceForDate(date);
+
+
+    const logs =
+        entries.filter(
+            item =>
+                item.date === date
+        );
+
+
+    $('calendarDayTitle')
+        .textContent =
+        formatLongDate(date);
+
+
+    let html = '';
+
+
+    if (attendance) {
+
+        html += `
+
+            <h3>
+                Attendance
+            </h3>
+
+            <p class="entry-meta">
+
+                Time In:
+                ${formatClockTime(
+            attendance.timeIn
+        )}
+
+                <br>
+
+                Time Out:
+                ${formatClockTime(
+            attendance.timeOut
+        )}
+
+            </p>
+        `;
+
+    }
+
+
+    if (logs.length) {
+
+        html += `
+
+            <h3>
+                Daily Logs
+            </h3>
+        `;
+
+
+        html += logs.map(
+            entry => `
+
+                <div class="report-preview-item">
+
+                    <strong>
+                        ${escapeHTML(
+                entry.task
+            )}
+                    </strong>
+
+                    <span>
+                        ${fmt(
+                entry.hours
+            )} hours
+                    </span>
+
+                    <span>
+                        ${escapeHTML(
+                entry.description
+            )}
+                    </span>
+
+                </div>
+            `
+        ).join('');
+
+    }
+
+
+    if (!attendance && !logs.length) {
+
+        html = `
+
+            <div class="empty">
+                No attendance or daily log
+                recorded for this date.
+            </div>
+        `;
+
+    }
+
+
+    $('calendarDayContent')
+        .innerHTML =
+        html;
+
+
+    $('calendarDayDialog')
+        .showModal();
+
+}
+
+
+
+$('closeCalendarDay')
+    .addEventListener(
+        'click',
+        () =>
+            $('calendarDayDialog')
+                .close()
+    );
+
+
+/* =====================================================
+   DAILY LOG FILTER / PAGINATION
+===================================================== */
 
 function getFilteredEntries() {
 
@@ -1682,161 +2043,96 @@ function getFilteredEntries() {
             .toLowerCase();
 
 
-    const dateFrom =
-        $('filterDateFrom')
-            .value;
+    const from =
+        $('filterDateFrom').value;
 
 
-    const dateTo =
-        $('filterDateTo')
-            .value;
+    const to =
+        $('filterDateTo').value;
 
 
-    const sortType =
-        $('entrySort')
-            .value;
+    const sort =
+        $('entrySort').value;
 
 
     let filtered =
-        entries.filter(
-            entry => {
+        entries.filter(entry => {
 
-                const searchable =
-                    [
-                        entry.date,
-
-                        entry.task,
-
-                        entry.description,
-
-                        entry.timeIn,
-
-                        entry.timeOut
-                    ]
-                        .join(' ')
-                        .toLowerCase();
+            const text =
+                [
+                    entry.date,
+                    entry.task,
+                    entry.description
+                ]
+                    .join(' ')
+                    .toLowerCase();
 
 
-                const matchesSearch =
+            return (
+
+                (
                     !query ||
-                    searchable.includes(
-                        query
-                    );
+                    text.includes(query)
+                )
+
+                &&
+
+                (
+                    !from ||
+                    entry.date >= from
+                )
+
+                &&
+
+                (
+                    !to ||
+                    entry.date <= to
+                )
+
+            );
+
+        });
 
 
-                const matchesFrom =
-                    !dateFrom ||
-                    entry.date >=
-                    dateFrom;
+    filtered.sort((a, b) => {
 
+        switch (sort) {
 
-                const matchesTo =
-                    !dateTo ||
-                    entry.date <=
-                    dateTo;
+            case 'oldest':
 
-
-                return (
-                    matchesSearch &&
-                    matchesFrom &&
-                    matchesTo
+                return a.date.localeCompare(
+                    b.date
                 );
 
-            }
-        );
+
+            case 'hours-high':
+
+                return Number(b.hours) -
+                    Number(a.hours);
 
 
-    filtered.sort(
-        (a, b) => {
+            case 'hours-low':
 
-            switch (
-            sortType
-            ) {
-
-                case 'oldest':
-
-                    return (
-                        a.date.localeCompare(
-                            b.date
-                        ) ||
-
-                        Number(
-                            a.createdAt || 0
-                        ) -
-
-                        Number(
-                            b.createdAt || 0
-                        )
-                    );
+                return Number(a.hours) -
+                    Number(b.hours);
 
 
-                case 'hours-high':
+            case 'task-az':
 
-                    return (
-                        Number(
-                            b.hours || 0
-                        ) -
-
-                        Number(
-                            a.hours || 0
-                        )
-                    );
+                return a.task.localeCompare(
+                    b.task
+                );
 
 
-                case 'hours-low':
+            default:
 
-                    return (
-                        Number(
-                            a.hours || 0
-                        ) -
-
-                        Number(
-                            b.hours || 0
-                        )
-                    );
-
-
-                case 'task-az':
-
-                    return (
-                        String(
-                            a.task
-                        ).localeCompare(
-                            String(
-                                b.task
-                            ),
-
-                            undefined,
-
-                            {
-                                sensitivity:
-                                    'base'
-                            }
-                        )
-                    );
-
-
-                case 'newest':
-                default:
-
-                    return (
-                        b.date.localeCompare(
-                            a.date
-                        ) ||
-
-                        Number(
-                            b.createdAt || 0
-                        ) -
-
-                        Number(
-                            a.createdAt || 0
-                        )
-                    );
-
-            }
+                return b.date.localeCompare(
+                    a.date
+                );
 
         }
-    );
+
+    });
 
 
     return filtered;
@@ -1849,8 +2145,7 @@ function renderEntries() {
 
     entriesPageSize =
         Number(
-            $('entriesPerPage')
-                .value
+            $('entriesPerPage').value
         ) || 10;
 
 
@@ -1869,7 +2164,6 @@ function renderEntries() {
     const totalPages =
         Math.max(
             1,
-
             Math.ceil(
                 filtered.length /
                 entriesPageSize
@@ -1877,84 +2171,49 @@ function renderEntries() {
         );
 
 
-    if (
-        entriesCurrentPage >
-        totalPages
-    ) {
-
-        entriesCurrentPage =
-            totalPages;
-
-    }
-
-
-    if (
-        entriesCurrentPage <
-        1
-    ) {
-
-        entriesCurrentPage =
-            1;
-
-    }
+    entriesCurrentPage =
+        Math.min(
+            Math.max(
+                1,
+                entriesCurrentPage
+            ),
+            totalPages
+        );
 
 
     const start =
         (
-            entriesCurrentPage -
-            1
+            entriesCurrentPage - 1
         ) *
         entriesPageSize;
 
 
-    const paginated =
+    const selected =
         filtered.slice(
             start,
-
             start +
             entriesPageSize
         );
 
 
-    if (!paginated.length) {
+    if (!selected.length) {
 
         $('entriesList')
             .innerHTML = `
+
                 <div class="empty">
-
-                    <strong>
-                        ${entries.length
-                ? 'No matching entries'
-                : 'No daily logs yet'
+                    ${entries.length
+                ? 'No entries match your filters.'
+                : 'No daily logs yet.'
             }
-                    </strong>
-
-                    <p>
-                        ${entries.length
-                ? 'Try changing your search or filters.'
-                : 'Add your first OJT entry to get started.'
-            }
-                    </p>
-
                 </div>
             `;
 
+    } else {
 
-        renderEntryPagination(
-            filtered.length,
-            totalPages
-        );
-
-
-        return;
-
-    }
-
-
-    $('entriesList')
-        .innerHTML =
-        paginated
-            .map(
+        $('entriesList')
+            .innerHTML =
+            selected.map(
                 entry => `
 
                     <article class="entry-card">
@@ -1998,7 +2257,7 @@ function renderEntries() {
                             </div>
 
                             ${entry.image
-                        ? '<span title="Photo attached">📷</span>'
+                        ? '📷'
                         : ''
                     }
 
@@ -2015,18 +2274,14 @@ function renderEntries() {
                         <div class="entry-actions">
 
                             <button
-                                data-detail="${escapeHTML(
-                        entry.id
-                    )}"
+                                data-detail="${entry.id}"
                                 type="button"
                             >
                                 View Details
                             </button>
 
                             <button
-                                data-edit="${escapeHTML(
-                        entry.id
-                    )}"
+                                data-edit="${entry.id}"
                                 type="button"
                             >
                                 Edit
@@ -2035,13 +2290,13 @@ function renderEntries() {
                         </div>
 
                     </article>
-
                 `
-            )
-            .join('');
+            ).join('');
+
+    }
 
 
-    renderEntryPagination(
+    renderPagination(
         filtered.length,
         totalPages
     );
@@ -2050,21 +2305,18 @@ function renderEntries() {
 
 
 
-function renderEntryPagination(
+function renderPagination(
     totalEntries,
     totalPages
 ) {
-
-    const container =
-        $('entryPagination');
-
 
     if (
         totalEntries === 0 ||
         totalPages <= 1
     ) {
 
-        container.innerHTML =
+        $('entryPagination')
+            .innerHTML =
             '';
 
         return;
@@ -2072,18 +2324,12 @@ function renderEntryPagination(
     }
 
 
-    let html =
-        '';
+    let html = `
 
-
-    html += `
         <button
-            type="button"
-            data-page-number="${entriesCurrentPage -
-        1
+            data-page-number="${entriesCurrentPage - 1
         }"
-            ${entriesCurrentPage ===
-            1
+            ${entriesCurrentPage === 1
             ? 'disabled'
             : ''
         }
@@ -2093,8 +2339,7 @@ function renderEntryPagination(
     `;
 
 
-    const visiblePages =
-        [];
+    const pages = [];
 
 
     for (
@@ -2103,46 +2348,30 @@ function renderEntryPagination(
         page++
     ) {
 
-        const isEdge =
+        if (
             page === 1 ||
-            page === totalPages;
-
-
-        const nearCurrent =
+            page === totalPages ||
             Math.abs(
                 page -
                 entriesCurrentPage
-            ) <= 1;
-
-
-        if (
-            isEdge ||
-            nearCurrent
+            ) <= 1
         ) {
 
-            visiblePages.push(
-                page
-            );
+            pages.push(page);
 
         }
 
     }
 
 
-    let previous =
-        0;
+    let previous = 0;
 
 
-    for (
-        const page
-        of visiblePages
-    ) {
+    pages.forEach(page => {
 
         if (
             previous &&
-            page -
-            previous >
-            1
+            page - previous > 1
         ) {
 
             html += `
@@ -2155,8 +2384,8 @@ function renderEntryPagination(
 
 
         html += `
+
             <button
-                type="button"
                 data-page-number="${page}"
                 class="${page ===
                 entriesCurrentPage
@@ -2169,20 +2398,17 @@ function renderEntryPagination(
         `;
 
 
-        previous =
-            page;
+        previous = page;
 
-    }
+    });
 
 
     html += `
+
         <button
-            type="button"
-            data-page-number="${entriesCurrentPage +
-        1
+            data-page-number="${entriesCurrentPage + 1
         }"
-            ${entriesCurrentPage ===
-            totalPages
+            ${entriesCurrentPage === totalPages
             ? 'disabled'
             : ''
         }
@@ -2192,26 +2418,38 @@ function renderEntryPagination(
     `;
 
 
-    container.innerHTML =
+    $('entryPagination')
+        .innerHTML =
         html;
 
 }
 
 
-/* =================================
-   FILTER EVENTS
-================================= */
 
 function resetEntryPage() {
 
-    entriesCurrentPage =
-        1;
-
+    entriesCurrentPage = 1;
 
     renderEntries();
 
 }
 
+
+
+[
+    'filterDateFrom',
+    'filterDateTo',
+    'entrySort',
+    'entriesPerPage'
+]
+    .forEach(id => {
+
+        $(id).addEventListener(
+            'change',
+            resetEntryPage
+        );
+
+    });
 
 
 $('search')
@@ -2221,64 +2459,24 @@ $('search')
     );
 
 
-$('filterDateFrom')
-    .addEventListener(
-        'change',
-        resetEntryPage
-    );
-
-
-$('filterDateTo')
-    .addEventListener(
-        'change',
-        resetEntryPage
-    );
-
-
-$('entrySort')
-    .addEventListener(
-        'change',
-        resetEntryPage
-    );
-
-
-$('entriesPerPage')
-    .addEventListener(
-        'change',
-        resetEntryPage
-    );
-
-
-
 $('clearEntryFilters')
     .addEventListener(
         'click',
-
         () => {
 
-            $('search').value =
-                '';
+            $('search').value = '';
 
+            $('filterDateFrom').value = '';
 
-            $('filterDateFrom').value =
-                '';
-
-
-            $('filterDateTo').value =
-                '';
-
+            $('filterDateTo').value = '';
 
             $('entrySort').value =
                 'newest';
 
-
             $('entriesPerPage').value =
                 '10';
 
-
-            entriesCurrentPage =
-                1;
-
+            entriesCurrentPage = 1;
 
             renderEntries();
 
@@ -2286,39 +2484,28 @@ $('clearEntryFilters')
     );
 
 
-/* =================================
-   ENTRY FORM
-================================= */
+/* =====================================================
+   ENTRY FORM + DRAFT
+===================================================== */
 
-function openForm(
-    id = null
-) {
+function openForm(id = null) {
 
     const entry =
         entries.find(
-            item =>
-                item.id ===
-                id
+            item => item.id === id
         );
 
 
     editingId =
-        entry?.id ??
-        null;
+        entry?.id || null;
 
 
     $('entryForm').reset();
 
 
-    $('formError').textContent =
-        '';
+    $('formError').textContent = '';
 
-
-    $('attachmentNote')
-        .textContent =
-        entry?.image
-            ? 'Existing photo will remain unless you select another.'
-            : '';
+    $('draftStatus').textContent = '';
 
 
     $('formTitle').textContent =
@@ -2327,34 +2514,90 @@ function openForm(
             : 'New Entry';
 
 
-    $('entryDate').value =
-        entry?.date ||
-        localDate();
+    if (entry) {
+
+        $('entryDate').value =
+            entry.date;
 
 
-    $('task').value =
-        entry?.task ||
-        '';
+        $('task').value =
+            entry.task;
 
 
-    $('timeIn').value =
-        entry?.timeIn ||
-        '';
+        $('timeIn').value =
+            entry.timeIn;
 
 
-    $('timeOut').value =
-        entry?.timeOut ||
-        '';
+        $('timeOut').value =
+            entry.timeOut;
 
 
-    $('breakMinutes').value =
-        entry?.breakMinutes ??
-        60;
+        $('breakMinutes').value =
+            entry.breakMinutes;
 
 
-    $('description').value =
-        entry?.description ||
-        '';
+        $('description').value =
+            entry.description;
+
+
+        $('attachmentNote').textContent =
+            entry.image
+                ? 'Existing photo will be kept unless replaced.'
+                : '';
+
+    } else if (entryDraft) {
+
+        $('entryDate').value =
+            entryDraft.date || localDate();
+
+
+        $('task').value =
+            entryDraft.task || '';
+
+
+        $('timeIn').value =
+            entryDraft.timeIn || '';
+
+
+        $('timeOut').value =
+            entryDraft.timeOut || '';
+
+
+        $('breakMinutes').value =
+            entryDraft.breakMinutes ?? 60;
+
+
+        $('description').value =
+            entryDraft.description || '';
+
+
+        $('draftStatus').textContent =
+            'Draft restored.';
+
+    } else {
+
+        const attendance =
+            attendanceForDate(
+                localDate()
+            );
+
+
+        $('entryDate').value =
+            localDate();
+
+
+        $('timeIn').value =
+            attendance?.timeIn || '';
+
+
+        $('timeOut').value =
+            attendance?.timeOut || '';
+
+
+        $('breakMinutes').value =
+            60;
+
+    }
 
 
     updatePreview();
@@ -2367,103 +2610,116 @@ function openForm(
 
 
 
-function fileData(file) {
+function getDraftFromForm() {
 
-    return new Promise(
-        (resolve, reject) => {
+    return {
 
-            const reader =
-                new FileReader();
+        date:
+            $('entryDate').value,
 
+        task:
+            $('task').value,
 
-            reader.onload =
-                () => resolve(
-                    reader.result
-                );
+        timeIn:
+            $('timeIn').value,
 
+        timeOut:
+            $('timeOut').value,
 
-            reader.onerror =
-                () => reject(
-                    Error(
-                        'Could not read image.'
-                    )
-                );
+        breakMinutes:
+            Number(
+                $('breakMinutes').value
+            ),
 
+        description:
+            $('description').value
 
-            reader
-                .readAsDataURL(
-                    file
-                );
-
-        }
-    );
+    };
 
 }
 
 
 
-function normalizeImage(
-    source
-) {
+$('saveDraftButton')
+    .addEventListener(
+        'click',
+        async () => {
 
-    return new Promise(
-        (resolve, reject) => {
+            entryDraft =
+                getDraftFromForm();
+
+
+            await saveData();
+
+
+            $('draftStatus')
+                .textContent =
+                'Draft saved.';
+
+
+            toast(
+                'Draft saved.'
+            );
+
+        }
+    );
+
+
+/* IMAGE COMPRESSION */
+
+function compressImage(file) {
+
+    return new Promise((resolve, reject) => {
+
+        const reader =
+            new FileReader();
+
+
+        reader.onload = () => {
 
             const image =
                 new Image();
 
 
-            image.onload =
-                () => {
+            image.onload = () => {
 
-                    const scale =
-                        Math.min(
-                            1,
-
-                            1000 /
-                            Math.max(
-                                image.width,
-                                image.height
-                            )
-                        );
+                const maxSize = 1200;
 
 
-                    const canvas =
-                        document
-                            .createElement(
-                                'canvas'
-                            );
-
-
-                    canvas.width =
+                const scale =
+                    Math.min(
+                        1,
+                        maxSize /
                         Math.max(
-                            1,
-
-                            Math.round(
-                                image.width *
-                                scale
-                            )
-                        );
+                            image.width,
+                            image.height
+                        )
+                    );
 
 
-                    canvas.height =
-                        Math.max(
-                            1,
-
-                            Math.round(
-                                image.height *
-                                scale
-                            )
-                        );
+                const canvas =
+                    document.createElement(
+                        'canvas'
+                    );
 
 
-                    const context =
-                        canvas.getContext(
-                            '2d'
-                        );
+                canvas.width =
+                    Math.round(
+                        image.width *
+                        scale
+                    );
 
 
-                    context.drawImage(
+                canvas.height =
+                    Math.round(
+                        image.height *
+                        scale
+                    );
+
+
+                canvas
+                    .getContext('2d')
+                    .drawImage(
                         image,
                         0,
                         0,
@@ -2472,67 +2728,61 @@ function normalizeImage(
                     );
 
 
-                    resolve(
-                        canvas.toDataURL(
-                            'image/png'
-                        )
-                    );
-
-                };
-
-
-            image.onerror =
-                () => reject(
-                    Error(
-                        'Could not process image.'
+                resolve(
+                    canvas.toDataURL(
+                        'image/jpeg',
+                        .78
                     )
                 );
 
+            };
+
+
+            image.onerror =
+                reject;
+
 
             image.src =
-                source;
+                reader.result;
 
-        }
-    );
+        };
+
+
+        reader.onerror =
+            reject;
+
+
+        reader.readAsDataURL(
+            file
+        );
+
+    });
 
 }
 
 
-/* =================================
-   SAVE ENTRY
-================================= */
 
 $('entryForm')
     .addEventListener(
         'submit',
-
         async event => {
 
             event.preventDefault();
 
 
-            $('formError')
-                .textContent =
-                '';
-
-
             const hours =
                 calculateHours(
                     $('timeIn').value,
-
                     $('timeOut').value,
-
                     $('breakMinutes').value
                 );
 
 
-            if (
-                hours === null
-            ) {
+            if (hours === null) {
 
                 $('formError')
                     .textContent =
-                    'Check your time in, time out, and break duration.';
+                    'Check your time in, time out, and break.';
 
                 return;
 
@@ -2551,10 +2801,7 @@ $('entryForm')
                     .trim();
 
 
-            if (
-                !task ||
-                !description
-            ) {
+            if (!task || !description) {
 
                 $('formError')
                     .textContent =
@@ -2565,203 +2812,116 @@ $('entryForm')
             }
 
 
+            const oldEntry =
+                entries.find(
+                    item =>
+                        item.id === editingId
+                );
+
+
             const file =
-                $('evidence')
-                    .files[0];
+                $('evidence').files[0];
 
 
-            if (
-                file &&
-                (
-                    ![
-                        'image/png',
-                        'image/jpeg',
-                        'image/webp'
-                    ].includes(
-                        file.type
-                    ) ||
-
-                    file.size >
-                    2 * 1024 * 1024
-                )
-            ) {
-
-                $('formError')
-                    .textContent =
-                    'Choose a PNG, JPG, or WebP image up to 2 MB.';
-
-                return;
-
-            }
+            let image =
+                oldEntry?.image || null;
 
 
-            $('saveButton')
-                .disabled =
-                true;
+            if (file) {
 
-
-            try {
-
-                const oldEntry =
-                    entries.find(
-                        entry =>
-                            entry.id ===
-                            editingId
+                image =
+                    await compressImage(
+                        file
                     );
 
-
-                const image =
-                    file
-                        ? await normalizeImage(
-                            await fileData(
-                                file
-                            )
-                        )
-
-                        : oldEntry?.image ||
-                        null;
+            }
 
 
-                const record = {
+            const record = {
 
-                    id:
-                        oldEntry?.id ||
-                        crypto.randomUUID(),
+                id:
+                    oldEntry?.id ||
+                    crypto.randomUUID(),
 
-                    createdAt:
-                        oldEntry?.createdAt ||
-                        Date.now(),
+                createdAt:
+                    oldEntry?.createdAt ||
+                    Date.now(),
 
-                    date:
-                        $('entryDate').value,
+                date:
+                    $('entryDate').value,
 
-                    task,
+                task,
 
-                    description,
+                description,
 
-                    timeIn:
-                        $('timeIn').value,
+                timeIn:
+                    $('timeIn').value,
 
-                    timeOut:
-                        $('timeOut').value,
+                timeOut:
+                    $('timeOut').value,
 
-                    breakMinutes:
-                        Number(
-                            $('breakMinutes')
-                                .value
-                        ),
+                breakMinutes:
+                    Number(
+                        $('breakMinutes').value
+                    ),
 
-                    hours,
+                hours,
 
-                    image
-
-                };
+                image
+            };
 
 
-                const nextEntries =
-                    oldEntry
+            if (oldEntry) {
 
-                        ? entries.map(
-                            entry =>
-                                entry.id ===
-                                    oldEntry.id
-                                    ? record
-                                    : entry
-                        )
+                entries =
+                    entries.map(
+                        item =>
+                            item.id ===
+                                oldEntry.id
 
-                        : [
-                            record,
-                            ...entries
-                        ];
+                                ? record
 
+                                : item
+                    );
 
-                /*
-                    If this entry uses the finished
-                    attendance record for today,
-                    clear activeAttendance afterward.
-                */
+            } else {
 
-                let nextAttendance =
-                    activeAttendance;
-
-
-                if (
-                    activeAttendance &&
-                    activeAttendance.date ===
-                    record.date &&
-                    activeAttendance.timeIn ===
-                    record.timeIn &&
-                    activeAttendance.timeOut ===
-                    record.timeOut
-                ) {
-
-                    nextAttendance =
-                        null;
-
-                }
-
-
-                await saveData(
-                    nextEntries,
-                    goal,
-                    studentName,
-                    nextAttendance
+                entries.unshift(
+                    record
                 );
-
-
-                entriesCurrentPage =
-                    1;
-
-
-                $('entryDialog')
-                    .close();
-
-
-                render();
-
-
-                toast(
-                    oldEntry
-                        ? 'Entry updated.'
-                        : 'Entry saved.'
-                );
-
-            } catch (
-            error
-            ) {
-
-                console.error(
-                    error
-                );
-
-
-                $('formError')
-                    .textContent =
-                    'Could not save this entry.';
-
-            } finally {
-
-                $('saveButton')
-                    .disabled =
-                    false;
 
             }
+
+
+            entryDraft = null;
+
+
+            await saveData();
+
+
+            $('entryDialog')
+                .close();
+
+
+            render();
+
+
+            toast(
+                oldEntry
+                    ? 'Entry updated.'
+                    : 'Entry saved.'
+            );
 
         }
     );
 
 
-/* =================================
-   ENTRY DETAILS
-================================= */
 
 function openDetail(id) {
 
     const entry =
         entries.find(
-            item =>
-                item.id ===
-                id
+            item => item.id === id
         );
 
 
@@ -2802,12 +2962,6 @@ function openDetail(id) {
             entry.hours
         )} hours
 
-                ·
-
-                ${Number(
-            entry.breakMinutes
-        )} minute break
-
             </p>
 
 
@@ -2827,7 +2981,6 @@ function openDetail(id) {
             </h3>
 
             ${entry.image
-
             ? `
                         <img
                             class="detail-photo"
@@ -2835,7 +2988,6 @@ function openDetail(id) {
                             alt="Photo evidence"
                         >
                     `
-
             : `
                         <p class="muted">
                             No photo attached.
@@ -2847,22 +2999,18 @@ function openDetail(id) {
             <div class="entry-actions">
 
                 <button
-                    data-edit="${escapeHTML(
-            entry.id
-        )}"
+                    data-edit="${entry.id}"
                     type="button"
                 >
-                    Edit Entry
+                    Edit
                 </button>
 
                 <button
                     class="danger"
-                    data-delete="${escapeHTML(
-            entry.id
-        )}"
+                    data-delete="${entry.id}"
                     type="button"
                 >
-                    Delete Entry
+                    Delete
                 </button>
 
             </div>
@@ -2876,60 +3024,41 @@ function openDetail(id) {
 
 
 
-async function deleteEntry(
-    id
-) {
+async function deleteEntry(id) {
 
     if (
         !confirm(
             'Delete this entry permanently?'
         )
     ) {
-
         return;
-
     }
 
 
-    try {
-
-        await saveData(
-            entries.filter(
-                entry =>
-                    entry.id !==
-                    id
-            ),
-            goal,
-            studentName,
-            activeAttendance
+    entries =
+        entries.filter(
+            entry =>
+                entry.id !== id
         );
 
 
-        $('detailDialog')
-            .close();
+    await saveData();
 
 
-        render();
+    $('detailDialog')
+        .close();
 
 
-        toast(
-            'Entry deleted.'
-        );
+    render();
 
-    } catch {
 
-        toast(
-            'Could not delete entry.'
-        );
-
-    }
+    toast(
+        'Entry deleted.'
+    );
 
 }
 
 
-/* =================================
-   DIALOG BUTTONS
-================================= */
 
 $('closeForm')
     .addEventListener(
@@ -2958,141 +3087,11 @@ $('closeDetails')
     );
 
 
-/* =================================
-   GLOBAL CLICK HANDLER
-================================= */
+/* =====================================================
+   REPORTS
+===================================================== */
 
-document
-    .addEventListener(
-        'click',
-
-        event => {
-
-            const button =
-                event.target
-                    .closest(
-                        'button'
-                    );
-
-
-            if (!button) {
-                return;
-            }
-
-
-            if (
-                button.dataset.page
-            ) {
-
-                switchPage(
-                    button.dataset.page
-                );
-
-            }
-
-
-            if (
-                button.hasAttribute(
-                    'data-new'
-                )
-            ) {
-
-                openForm();
-
-            }
-
-
-            if (
-                button.dataset.detail
-            ) {
-
-                openDetail(
-                    button.dataset.detail
-                );
-
-            }
-
-
-            if (
-                button.dataset.edit
-            ) {
-
-                $('detailDialog')
-                    .close();
-
-
-                openForm(
-                    button.dataset.edit
-                );
-
-            }
-
-
-            if (
-                button.dataset.delete
-            ) {
-
-                deleteEntry(
-                    button.dataset.delete
-                );
-
-            }
-
-
-            if (
-                button.dataset.pageNumber
-            ) {
-
-                const page =
-                    Number(
-                        button.dataset
-                            .pageNumber
-                    );
-
-
-                if (
-                    Number.isInteger(
-                        page
-                    ) &&
-                    page >= 1
-                ) {
-
-                    entriesCurrentPage =
-                        page;
-
-
-                    renderEntries();
-
-
-                    document
-                        .getElementById(
-                            'entries'
-                        )
-                        .scrollIntoView(
-                            {
-                                behavior:
-                                    'smooth',
-
-                                block:
-                                    'start'
-                            }
-                        );
-
-                }
-
-            }
-
-        }
-    );
-
-
-/* =================================
-   WEEKLY REPORT
-================================= */
-
-function weekBounds(
-    value
-) {
+function weekBounds(value) {
 
     const date =
         new Date(
@@ -3102,38 +3101,21 @@ function weekBounds(
         );
 
 
-    if (
-        Number.isNaN(
-            date.getTime()
-        )
-    ) {
-
-        return null;
-
-    }
-
-
-    const currentDay =
-        date.getDay();
-
-
-    const difference =
+    const offset =
         (
-            currentDay +
+            date.getDay() +
             6
         ) % 7;
 
 
     date.setDate(
         date.getDate() -
-        difference
+        offset
     );
 
 
     const monday =
-        localDate(
-            date
-        );
+        localDate(date);
 
 
     date.setDate(
@@ -3142,15 +3124,9 @@ function weekBounds(
     );
 
 
-    const sunday =
-        localDate(
-            date
-        );
-
-
     return [
         monday,
-        sunday
+        localDate(date)
     ];
 
 }
@@ -3159,43 +3135,113 @@ function weekBounds(
 
 function weekEntries() {
 
-    const bounds =
+    const [start, end] =
         weekBounds(
             $('weekDate').value
         );
 
 
-    if (!bounds) {
-        return [];
-    }
-
-
-    return sorted()
+    return [...entries]
         .filter(
             entry =>
-                entry.date >=
-                bounds[0] &&
-
-                entry.date <=
-                bounds[1]
+                entry.date >= start &&
+                entry.date <= end
         )
-        .reverse();
+        .sort(
+            (a, b) =>
+                a.date.localeCompare(
+                    b.date
+                )
+        );
 
 }
 
 
 
-function renderReport() {
+function monthEntries(month) {
+
+    return [...entries]
+        .filter(
+            entry =>
+                entry.date.startsWith(
+                    month
+                )
+        )
+        .sort(
+            (a, b) =>
+                a.date.localeCompare(
+                    b.date
+                )
+        );
+
+}
+
+
+
+function renderReportItems(
+    selected
+) {
+
+    if (!selected.length) {
+
+        return `
+            <div class="empty">
+                No entries found.
+            </div>
+        `;
+
+    }
+
+
+    return selected.map(
+        entry => `
+
+            <article class="report-preview-item">
+
+                <strong>
+                    ${formatDate(
+            entry.date
+        )}
+                    ·
+                    ${escapeHTML(
+            entry.task
+        )}
+                </strong>
+
+                <span>
+                    ${formatClockTime(
+            entry.timeIn
+        )}
+                    –
+                    ${formatClockTime(
+            entry.timeOut
+        )}
+                    ·
+                    ${fmt(
+            entry.hours
+        )} hours
+                </span>
+
+                <span>
+                    ${escapeHTML(
+            entry.description
+        )}
+                </span>
+
+            </article>
+        `
+    ).join('');
+
+}
+
+
+
+function renderWeeklyReport() {
 
     const bounds =
         weekBounds(
             $('weekDate').value
         );
-
-
-    if (!bounds) {
-        return;
-    }
 
 
     $('weekRange')
@@ -3207,108 +3253,43 @@ function renderReport() {
         )}`;
 
 
-    const selected =
-        weekEntries();
-
-
-    if (
-        !selected.length
-    ) {
-
-        $('reportPreview')
-            .innerHTML = `
-
-                <div class="empty">
-
-                    <strong>
-                        No entries for this week
-                    </strong>
-
-                    <p>
-                        Daily logs recorded during
-                        this week will appear here.
-                    </p>
-
-                </div>
-            `;
-
-
-        $('exportButton')
-            .disabled =
-            true;
-
-
-        return;
-
-    }
-
-
     $('reportPreview')
         .innerHTML =
-        selected
-            .map(
-                entry => `
+        renderReportItems(
+            weekEntries()
+        );
 
-                    <article class="report-preview-item">
-
-                        <strong>
-                            ${formatDate(
-                    entry.date
-                )}
-                            ·
-                            ${escapeHTML(
-                    entry.task
-                )}
-                        </strong>
-
-                        <span>
-
-                            ${formatClockTime(
-                    entry.timeIn
-                )}
-
-                            –
-
-                            ${formatClockTime(
-                    entry.timeOut
-                )}
-
-                            ·
-
-                            ${fmt(
-                    entry.hours
-                )} hours
-
-                        </span>
-
-                        <span>
-                            ${escapeHTML(
-                    entry.description
-                )}
-                        </span>
-
-                        ${entry.image
-
-                        ? `
-                                    <img
-                                        src="${entry.image}"
-                                        alt="Photo evidence"
-                                    >
-                                `
-
-                        : ''
-                    }
-
-                    </article>
-
-                `
-            )
-            .join('');
+}
 
 
-    $('exportButton')
-        .disabled =
-        false;
+
+function renderMonthlyReport() {
+
+    const selected =
+        monthEntries(
+            $('reportMonth').value
+        );
+
+
+    const total =
+        selected.reduce(
+            (sum, entry) =>
+                sum +
+                Number(entry.hours || 0),
+            0
+        );
+
+
+    $('monthlyReportTotal')
+        .textContent =
+        `${fmt(total)} hours`;
+
+
+    $('monthlyReportPreview')
+        .innerHTML =
+        renderReportItems(
+            selected
+        );
 
 }
 
@@ -3317,20 +3298,423 @@ function renderReport() {
 $('weekDate')
     .addEventListener(
         'change',
-        renderReport
+        renderWeeklyReport
     );
 
 
-/* =================================
-   DOCX UTILITIES
-================================= */
+$('reportMonth')
+    .addEventListener(
+        'change',
+        renderMonthlyReport
+    );
+
+
+document
+    .querySelectorAll(
+        '.report-tab'
+    )
+    .forEach(button => {
+
+        button.addEventListener(
+            'click',
+            () => {
+
+                document
+                    .querySelectorAll(
+                        '.report-tab'
+                    )
+                    .forEach(item =>
+                        item.classList.remove(
+                            'active'
+                        )
+                    );
+
+
+                document
+                    .querySelectorAll(
+                        '.report-section'
+                    )
+                    .forEach(item =>
+                        item.classList.remove(
+                            'active'
+                        )
+                    );
+
+
+                button.classList.add(
+                    'active'
+                );
+
+
+                const tab =
+                    button.dataset.reportTab;
+
+
+                $(
+                    tab === 'weekly'
+
+                        ? 'weeklyReportSection'
+
+                        : 'monthlyReportSection'
+                )
+                    .classList
+                    .add('active');
+
+            }
+        );
+
+    });
+
+
+/* CSV */
+
+function csvEscape(value) {
+
+    return `"${String(
+        value ?? ''
+    ).replace(
+        /"/g,
+        '""'
+    )}"`;
+
+}
+
+
+
+function exportCsv(
+    selected,
+    filename
+) {
+
+    if (!selected.length) {
+
+        toast(
+            'There are no entries to export.'
+        );
+
+        return;
+
+    }
+
+
+    const rows = [
+
+        [
+            'Date',
+            'Task',
+            'Time In',
+            'Time Out',
+            'Break Minutes',
+            'Rendered Hours',
+            'Description'
+        ],
+
+        ...selected.map(
+            entry => [
+
+                entry.date,
+
+                entry.task,
+
+                entry.timeIn,
+
+                entry.timeOut,
+
+                entry.breakMinutes,
+
+                entry.hours,
+
+                entry.description
+            ]
+        )
+
+    ];
+
+
+    const csv =
+        rows
+            .map(row =>
+                row
+                    .map(csvEscape)
+                    .join(',')
+            )
+            .join('\n');
+
+
+    downloadBlob(
+        new Blob(
+            [csv],
+            {
+                type:
+                    'text/csv;charset=utf-8'
+            }
+        ),
+        filename
+    );
+
+}
+
+
+
+$('exportWeeklyCsv')
+    .addEventListener(
+        'click',
+        () =>
+            exportCsv(
+                weekEntries(),
+                'OJT_Weekly_Report.csv'
+            )
+    );
+
+
+$('exportMonthlyCsv')
+    .addEventListener(
+        'click',
+        () =>
+            exportCsv(
+                monthEntries(
+                    $('reportMonth').value
+                ),
+                'OJT_Monthly_Report.csv'
+            )
+    );
+
+
+/* PRINT / PDF */
+
+function printReport(
+    title,
+    selected
+) {
+
+    if (!selected.length) {
+
+        toast(
+            'There are no entries to print.'
+        );
+
+        return;
+
+    }
+
+
+    const total =
+        selected.reduce(
+            (sum, entry) =>
+                sum +
+                Number(entry.hours || 0),
+            0
+        );
+
+
+    const rows =
+        selected.map(
+            entry => `
+
+                <tr>
+
+                    <td>
+                        ${formatDate(
+                entry.date
+            )}
+                    </td>
+
+                    <td>
+                        ${escapeHTML(
+                entry.task
+            )}
+                    </td>
+
+                    <td>
+                        ${formatClockTime(
+                entry.timeIn
+            )}
+                    </td>
+
+                    <td>
+                        ${formatClockTime(
+                entry.timeOut
+            )}
+                    </td>
+
+                    <td>
+                        ${fmt(
+                entry.hours
+            )}
+                    </td>
+
+                    <td>
+                        ${escapeHTML(
+                entry.description
+            )}
+                    </td>
+
+                </tr>
+            `
+        ).join('');
+
+
+    const printWindow =
+        window.open(
+            '',
+            '_blank'
+        );
+
+
+    printWindow.document.write(`
+
+        <!doctype html>
+
+        <html>
+
+        <head>
+
+            <title>${title}</title>
+
+            <style>
+
+                body {
+                    font-family:
+                        Arial,
+                        sans-serif;
+
+                    padding: 35px;
+
+                    color: #222;
+                }
+
+                h1 {
+                    margin-bottom: 5px;
+                }
+
+                table {
+                    width: 100%;
+
+                    border-collapse: collapse;
+
+                    margin-top: 25px;
+                }
+
+                th,
+                td {
+                    border: 1px solid #ccc;
+
+                    padding: 8px;
+
+                    font-size: 11px;
+
+                    text-align: left;
+
+                    vertical-align: top;
+                }
+
+                th {
+                    background: #eee;
+                }
+
+                @media print {
+
+                    body {
+                        padding: 0;
+                    }
+
+                }
+
+            </style>
+
+        </head>
+
+        <body>
+
+            <h1>${title}</h1>
+
+            <p>
+                Student:
+                ${escapeHTML(
+        studentName || 'Student'
+    )}
+            </p>
+
+            <p>
+                Total Rendered Hours:
+                ${fmt(total)}
+            </p>
+
+            <table>
+
+                <thead>
+
+                    <tr>
+
+                        <th>Date</th>
+                        <th>Task</th>
+                        <th>Time In</th>
+                        <th>Time Out</th>
+                        <th>Hours</th>
+                        <th>Description</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    ${rows}
+
+                </tbody>
+
+            </table>
+
+            <script>
+                window.onload = () => {
+                    window.print();
+                };
+            <\/script>
+
+        </body>
+
+        </html>
+    `);
+
+
+    printWindow.document.close();
+
+}
+
+
+
+$('printWeeklyButton')
+    .addEventListener(
+        'click',
+        () =>
+            printReport(
+                'Weekly OJT Report',
+                weekEntries()
+            )
+    );
+
+
+$('printMonthlyButton')
+    .addEventListener(
+        'click',
+        () =>
+            printReport(
+                'Monthly OJT Report',
+                monthEntries(
+                    $('reportMonth').value
+                )
+            )
+    );
+
+
+/* =====================================================
+   WORD DOCX
+===================================================== */
 
 const utf8 =
-    value =>
+    text =>
         new TextEncoder()
-            .encode(
-                value
-            );
+            .encode(text);
 
 
 
@@ -3338,11 +3722,7 @@ function u16(number) {
 
     return [
         number & 255,
-
-        (
-            number >>>
-            8
-        ) & 255
+        number >>> 8 & 255
     ];
 
 }
@@ -3353,21 +3733,9 @@ function u32(number) {
 
     return [
         number & 255,
-
-        (
-            number >>>
-            8
-        ) & 255,
-
-        (
-            number >>>
-            16
-        ) & 255,
-
-        (
-            number >>>
-            24
-        ) & 255
+        number >>> 8 & 255,
+        number >>> 16 & 255,
+        number >>> 24 & 255
     ];
 
 }
@@ -3377,14 +3745,11 @@ function u32(number) {
 const crcTable =
     Array.from(
         {
-            length:
-                256
+            length: 256
         },
+        (_, value) => {
 
-        (_, start) => {
-
-            let number =
-                start;
+            let number = value;
 
 
             for (
@@ -3394,31 +3759,17 @@ const crcTable =
             ) {
 
                 number =
-                    (
-                        number &
-                        1
-                    )
+                    number & 1
 
-                        ? (
-                            0xedb88320 ^
-                            (
-                                number >>>
-                                1
-                            )
-                        )
+                        ? 0xedb88320 ^
+                        number >>> 1
 
-                        : (
-                            number >>>
-                            1
-                        );
+                        : number >>> 1;
 
             }
 
 
-            return (
-                number >>>
-                0
-            );
+            return number >>> 0;
 
         }
     );
@@ -3431,10 +3782,7 @@ function crc32(bytes) {
         0xffffffff;
 
 
-    for (
-        const byte
-        of bytes
-    ) {
+    for (const byte of bytes) {
 
         crc =
             crcTable[
@@ -3444,10 +3792,7 @@ function crc32(bytes) {
             ) &
             255
             ] ^
-            (
-                crc >>>
-                8
-            );
+            crc >>> 8;
 
     }
 
@@ -3463,16 +3808,10 @@ function crc32(bytes) {
 
 function zip(files) {
 
-    const parts =
-        [];
+    const parts = [];
+    const central = [];
 
-
-    const central =
-        [];
-
-
-    let offset =
-        0;
+    let offset = 0;
 
 
     for (
@@ -3484,64 +3823,46 @@ function zip(files) {
     ) {
 
         const name =
-            utf8(
-                path
-            );
+            utf8(path);
 
 
         const bytes =
-            typeof data ===
-                'string'
-
-                ? utf8(
-                    data
-                )
-
+            typeof data === 'string'
+                ? utf8(data)
                 : data;
 
 
         const crc =
-            crc32(
-                bytes
-            );
+            crc32(bytes);
 
 
         const local =
-            new Uint8Array(
-                [
-                    ...u32(
-                        0x04034b50
-                    ),
+            new Uint8Array([
 
-                    ...u16(20),
+                ...u32(0x04034b50),
 
-                    ...u16(0),
+                ...u16(20),
 
-                    ...u16(0),
+                ...u16(0),
 
-                    ...u16(0),
+                ...u16(0),
 
-                    ...u16(0),
+                ...u16(0),
 
-                    ...u32(crc),
+                ...u16(0),
 
-                    ...u32(
-                        bytes.length
-                    ),
+                ...u32(crc),
 
-                    ...u32(
-                        bytes.length
-                    ),
+                ...u32(bytes.length),
 
-                    ...u16(
-                        name.length
-                    ),
+                ...u32(bytes.length),
 
-                    ...u16(0),
+                ...u16(name.length),
 
-                    ...name
-                ]
-            );
+                ...u16(0),
+
+                ...name
+            ]);
 
 
         parts.push(
@@ -3551,55 +3872,44 @@ function zip(files) {
 
 
         central.push(
-            new Uint8Array(
-                [
-                    ...u32(
-                        0x02014b50
-                    ),
+            new Uint8Array([
 
-                    ...u16(20),
+                ...u32(0x02014b50),
 
-                    ...u16(20),
+                ...u16(20),
 
-                    ...u16(0),
+                ...u16(20),
 
-                    ...u16(0),
+                ...u16(0),
 
-                    ...u16(0),
+                ...u16(0),
 
-                    ...u16(0),
+                ...u16(0),
 
-                    ...u32(crc),
+                ...u16(0),
 
-                    ...u32(
-                        bytes.length
-                    ),
+                ...u32(crc),
 
-                    ...u32(
-                        bytes.length
-                    ),
+                ...u32(bytes.length),
 
-                    ...u16(
-                        name.length
-                    ),
+                ...u32(bytes.length),
 
-                    ...u16(0),
+                ...u16(name.length),
 
-                    ...u16(0),
+                ...u16(0),
 
-                    ...u16(0),
+                ...u16(0),
 
-                    ...u16(0),
+                ...u16(0),
 
-                    ...u32(0),
+                ...u16(0),
 
-                    ...u32(
-                        offset
-                    ),
+                ...u32(0),
 
-                    ...name
-                ]
-            )
+                ...u32(offset),
+
+                ...name
+            ])
         );
 
 
@@ -3612,47 +3922,32 @@ function zip(files) {
 
     const centralSize =
         central.reduce(
-            (
-                total,
-                part
-            ) =>
-                total +
-                part.length,
-
+            (sum, item) =>
+                sum +
+                item.length,
             0
         );
 
 
     const end =
-        new Uint8Array(
-            [
-                ...u32(
-                    0x06054b50
-                ),
+        new Uint8Array([
 
-                ...u16(0),
+            ...u32(0x06054b50),
 
-                ...u16(0),
+            ...u16(0),
 
-                ...u16(
-                    files.length
-                ),
+            ...u16(0),
 
-                ...u16(
-                    files.length
-                ),
+            ...u16(files.length),
 
-                ...u32(
-                    centralSize
-                ),
+            ...u16(files.length),
 
-                ...u32(
-                    offset
-                ),
+            ...u32(centralSize),
 
-                ...u16(0)
-            ]
-        );
+            ...u32(offset),
+
+            ...u16(0)
+        ]);
 
 
     return new Blob(
@@ -3661,7 +3956,6 @@ function zip(files) {
             ...central,
             end
         ],
-
         {
             type:
                 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
@@ -3678,8 +3972,11 @@ function paragraph(
 ) {
 
     return `
+
         <w:p>
+
             <w:r>
+
                 <w:rPr>
                     ${bold
             ? '<w:b/>'
@@ -3690,7 +3987,9 @@ function paragraph(
                 <w:t xml:space="preserve">
                     ${xml(text)}
                 </w:t>
+
             </w:r>
+
         </w:p>
     `;
 
@@ -3698,171 +3997,13 @@ function paragraph(
 
 
 
-function imageRun(
-    relationId,
-    index
-) {
+function createDocx(selected) {
 
-    return `
-        <w:p>
-            <w:r>
-                <w:drawing>
-
-                    <wp:inline
-                        distT="0"
-                        distB="0"
-                        distL="0"
-                        distR="0"
-                    >
-
-                        <wp:extent
-                            cx="4572000"
-                            cy="3429000"
-                        />
-
-                        <wp:docPr
-                            id="${index}"
-                            name="Evidence ${index}"
-                        />
-
-                        <a:graphic
-                            xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
-                        >
-
-                            <a:graphicData
-                                uri="http://schemas.openxmlformats.org/drawingml/2006/picture"
-                            >
-
-                                <pic:pic
-                                    xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"
-                                >
-
-                                    <pic:nvPicPr>
-
-                                        <pic:cNvPr
-                                            id="${index}"
-                                            name="Evidence ${index}.png"
-                                        />
-
-                                        <pic:cNvPicPr/>
-
-                                    </pic:nvPicPr>
-
-
-                                    <pic:blipFill>
-
-                                        <a:blip
-                                            r:embed="${relationId}"
-                                        />
-
-                                        <a:stretch>
-                                            <a:fillRect/>
-                                        </a:stretch>
-
-                                    </pic:blipFill>
-
-
-                                    <pic:spPr>
-
-                                        <a:xfrm>
-
-                                            <a:off
-                                                x="0"
-                                                y="0"
-                                            />
-
-                                            <a:ext
-                                                cx="4572000"
-                                                cy="3429000"
-                                            />
-
-                                        </a:xfrm>
-
-                                        <a:prstGeom
-                                            prst="rect"
-                                        >
-                                            <a:avLst/>
-                                        </a:prstGeom>
-
-                                    </pic:spPr>
-
-                                </pic:pic>
-
-                            </a:graphicData>
-
-                        </a:graphic>
-
-                    </wp:inline>
-
-                </w:drawing>
-            </w:r>
-        </w:p>
-    `;
-
-}
-
-
-
-function base64Bytes(url) {
-
-    const raw =
-        atob(
-            url.split(
-                ','
-            )[1]
-        );
-
-
-    return Uint8Array.from(
-        raw,
-
-        character =>
-            character.charCodeAt(
-                0
-            )
-    );
-
-}
-
-
-/* =================================
-   CREATE WORD REPORT
-================================= */
-
-function createDocx(
-    selected,
-    bounds
-) {
-
-    const files =
-        [];
-
-
-    const relations =
-        [];
-
-
-    const body =
-        [];
-
-
-    const totalHours =
-        selected.reduce(
-            (
-                total,
-                entry
-            ) =>
-                total +
-                Number(
-                    entry.hours ||
-                    0
-                ),
-
-            0
-        );
+    const body = [];
 
 
     body.push(
+
         paragraph(
             'WEEKLY OJT REPORT',
             true
@@ -3875,33 +4016,22 @@ function createDocx(
         ),
 
         paragraph(
-            `Week: ${formatDate(
-                bounds[0]
-            )} – ${formatDate(
-                bounds[1]
-            )}`
-        ),
-
-        paragraph(
             `Total Rendered Hours: ${fmt(
-                totalHours
+                selected.reduce(
+                    (sum, entry) =>
+                        sum +
+                        Number(entry.hours || 0),
+                    0
+                )
             )}`
         ),
 
-        paragraph(
-            ' '
-        )
+        paragraph(' ')
+
     );
 
 
-    let imageIndex =
-        0;
-
-
-    for (
-        const entry
-        of selected
-    ) {
+    selected.forEach(entry => {
 
         body.push(
 
@@ -3919,7 +4049,7 @@ function createDocx(
             paragraph(
                 `Time: ${formatClockTime(
                     entry.timeIn
-                )} – ${formatClockTime(
+                )} - ${formatClockTime(
                     entry.timeOut
                 )}`
             ),
@@ -3935,167 +4065,97 @@ function createDocx(
             ),
 
             paragraph(
-                `Tasks Accomplished: ${entry.description}`
-            )
+                `Description: ${entry.description}`
+            ),
+
+            paragraph(' ')
 
         );
 
-
-        if (
-            entry.image
-        ) {
-
-            imageIndex++;
+    });
 
 
-            const relationId =
-                `rId${imageIndex}`;
+    const documentXML = `
 
+        <?xml version="1.0"
+            encoding="UTF-8"
+            standalone="yes"?>
 
-            const imagePath =
-                `media/evidence${imageIndex}.png`;
-
-
-            files.push(
-                [
-                    `word/${imagePath}`,
-
-                    base64Bytes(
-                        entry.image
-                    )
-                ]
-            );
-
-
-            relations.push(
-                `
-                    <Relationship
-                        Id="${relationId}"
-                        Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"
-                        Target="${imagePath}"
-                    />
-                `
-            );
-
-
-            body.push(
-                paragraph(
-                    'Photo Evidence:'
-                ),
-
-                imageRun(
-                    relationId,
-                    imageIndex
-                )
-            );
-
-        } else {
-
-            body.push(
-                paragraph(
-                    'Photo Evidence: None'
-                )
-            );
-
-        }
-
-
-        body.push(
-            paragraph(
-                ' '
-            )
-        );
-
-    }
-
-
-    const documentXML =
-        `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
-
-        `<w:document
+        <w:document
             xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
-            xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
-            xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
-        >` +
+        >
 
-        `<w:body>` +
+            <w:body>
 
-        body.join('') +
+                ${body.join('')}
 
-        `<w:sectPr>
+                <w:sectPr>
 
-            <w:pgSz
-                w:w="12240"
-                w:h="15840"
-            />
+                    <w:pgSz
+                        w:w="12240"
+                        w:h="15840"
+                    />
 
-            <w:pgMar
-                w:top="1100"
-                w:right="1100"
-                w:bottom="1100"
-                w:left="1100"
-            />
+                </w:sectPr>
 
-        </w:sectPr>` +
+            </w:body>
 
-        `</w:body>` +
-
-        `</w:document>`;
+        </w:document>
+    `;
 
 
-    const contentTypes =
-        `<?xml version="1.0" encoding="UTF-8"?>` +
+    const types = `
 
-        `<Types
+        <?xml version="1.0"
+            encoding="UTF-8"?>
+
+        <Types
             xmlns="http://schemas.openxmlformats.org/package/2006/content-types"
-        >` +
+        >
 
-        `<Default
-            Extension="rels"
-            ContentType="application/vnd.openxmlformats-package.relationships+xml"
-        />` +
+            <Default
+                Extension="rels"
+                ContentType="application/vnd.openxmlformats-package.relationships+xml"
+            />
 
-        `<Default
-            Extension="xml"
-            ContentType="application/xml"
-        />` +
+            <Default
+                Extension="xml"
+                ContentType="application/xml"
+            />
 
-        `<Default
-            Extension="png"
-            ContentType="image/png"
-        />` +
+            <Override
+                PartName="/word/document.xml"
+                ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"
+            />
 
-        `<Override
-            PartName="/word/document.xml"
-            ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"
-        />` +
-
-        `</Types>`;
+        </Types>
+    `;
 
 
-    files.unshift(
+    return zip([
 
         [
             '[Content_Types].xml',
-            contentTypes
+            types
         ],
 
         [
             '_rels/.rels',
 
-            `<?xml version="1.0" encoding="UTF-8"?>` +
+            `<?xml version="1.0"
+                encoding="UTF-8"?>
 
-            `<Relationships
+            <Relationships
                 xmlns="http://schemas.openxmlformats.org/package/2006/relationships"
-            >` +
+            >
 
-            `<Relationship
-                Id="rId1"
-                Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"
-                Target="word/document.xml"
-            />` +
+                <Relationship
+                    Id="rId1"
+                    Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"
+                    Target="word/document.xml"
+                />
 
-            `</Relationships>`
+            </Relationships>`
         ],
 
         [
@@ -4106,128 +4166,446 @@ function createDocx(
         [
             'word/_rels/document.xml.rels',
 
-            `<?xml version="1.0" encoding="UTF-8"?>` +
+            `<?xml version="1.0"
+                encoding="UTF-8"?>
 
-            `<Relationships
+            <Relationships
                 xmlns="http://schemas.openxmlformats.org/package/2006/relationships"
-            >` +
-
-            relations.join('') +
-
-            `</Relationships>`
+            ></Relationships>`
         ]
 
-    );
-
-
-    return zip(
-        files
-    );
+    ]);
 
 }
 
 
-/* =================================
-   EXPORT WORD REPORT
-================================= */
 
-$('exportButton')
+$('exportWordButton')
     .addEventListener(
         'click',
-
         () => {
 
             const selected =
                 weekEntries();
 
 
-            const bounds =
-                weekBounds(
-                    $('weekDate')
-                        .value
+            if (!selected.length) {
+
+                toast(
+                    'There are no entries to export.'
                 );
-
-
-            if (
-                !selected.length ||
-                !bounds
-            ) {
 
                 return;
 
             }
 
 
-            try {
+            downloadBlob(
+                createDocx(selected),
+                'OJT_Weekly_Report.docx'
+            );
 
-                const blob =
-                    createDocx(
-                        selected,
-                        bounds
-                    );
-
-
-                const url =
-                    URL.createObjectURL(
-                        blob
-                    );
+        }
+    );
 
 
-                const link =
-                    document
-                        .createElement(
-                            'a'
-                        );
+/* =====================================================
+   DOWNLOAD
+===================================================== */
+
+function downloadBlob(
+    blob,
+    filename
+) {
+
+    const url =
+        URL.createObjectURL(blob);
 
 
-                link.href =
-                    url;
+    const link =
+        document.createElement('a');
 
 
-                link.download =
-                    `OJT_Weekly_Report_${bounds[0]}.docx`;
+    link.href = url;
+
+    link.download =
+        filename;
 
 
-                document.body
-                    .append(
-                        link
-                    );
+    document.body.append(link);
+
+    link.click();
+
+    link.remove();
 
 
-                link.click();
+    setTimeout(
+        () =>
+            URL.revokeObjectURL(
+                url
+            ),
+        30000
+    );
+
+}
 
 
-                link.remove();
+/* =====================================================
+   SETTINGS
+===================================================== */
+
+function updateSettingsForm() {
+
+    $('autoBreakEnabled').checked =
+        settings.autoBreakEnabled;
 
 
-                setTimeout(
-                    () => {
+    $('autoBreakThreshold').value =
+        settings.autoBreakThreshold;
 
-                        URL.revokeObjectURL(
-                            url
-                        );
 
-                    },
+    $('autoBreakMinutes').value =
+        settings.autoBreakMinutes;
 
-                    30000
+
+    $('reminderEnabled').checked =
+        settings.reminderEnabled;
+
+
+    $('reminderTime').value =
+        settings.reminderTime;
+
+
+    $('darkModeToggle').checked =
+        settings.darkMode;
+
+}
+
+
+
+$('settingsForm')
+    .addEventListener(
+        'submit',
+        async event => {
+
+            event.preventDefault();
+
+
+            studentName =
+                $('studentName')
+                    .value
+                    .trim();
+
+
+            goal =
+                Number(
+                    $('hoursGoal').value
                 );
 
 
-                toast(
-                    'Word report downloaded.'
+            settings.autoBreakEnabled =
+                $('autoBreakEnabled').checked;
+
+
+            settings.autoBreakThreshold =
+                Number(
+                    $('autoBreakThreshold')
+                        .value
                 );
 
-            } catch (
-            error
+
+            settings.autoBreakMinutes =
+                Number(
+                    $('autoBreakMinutes')
+                        .value
+                );
+
+
+            settings.reminderEnabled =
+                $('reminderEnabled').checked;
+
+
+            settings.reminderTime =
+                $('reminderTime').value;
+
+
+            settings.darkMode =
+                $('darkModeToggle').checked;
+
+
+            if (
+                settings.reminderEnabled &&
+                'Notification' in window &&
+                Notification.permission === 'default'
             ) {
 
-                console.error(
-                    error
-                );
+                await Notification
+                    .requestPermission();
+
+            }
+
+
+            await saveData();
+
+
+            updateStudentInfo();
+
+            applyDarkMode();
+
+            render();
+
+
+            toast(
+                'Settings saved.'
+            );
+
+        }
+    );
+
+
+
+function applyDarkMode() {
+
+    document.body
+        .classList
+        .toggle(
+            'dark',
+            Boolean(
+                settings.darkMode
+            )
+        );
+
+}
+
+
+/* =====================================================
+   REMINDER
+===================================================== */
+
+function checkReminder() {
+
+    if (
+        !settings.reminderEnabled ||
+        reminderAlreadyShown
+    ) {
+        return;
+    }
+
+
+    const attendance =
+        attendanceForDate(
+            localDate()
+        );
+
+
+    if (
+        !attendance ||
+        !attendance.timeIn ||
+        attendance.timeOut
+    ) {
+        return;
+    }
+
+
+    const now =
+        currentTime();
+
+
+    if (
+        now <
+        settings.reminderTime
+    ) {
+        return;
+    }
+
+
+    reminderAlreadyShown =
+        true;
+
+
+    const message =
+        'You are still timed in. Remember to record your Time Out.';
+
+
+    toast(message);
+
+
+    if (
+        'Notification' in window &&
+        Notification.permission ===
+        'granted'
+    ) {
+
+        new Notification(
+            'Over-Time Reminder',
+            {
+                body: message,
+                icon:
+                    'icons/icon-192.png'
+            }
+        );
+
+    }
+
+}
+
+
+/* =====================================================
+   BACKUP
+===================================================== */
+
+$('backupButton')
+    .addEventListener(
+        'click',
+        () => {
+
+            const backup = {
+
+                format:
+                    'overtime-backup-v3',
+
+                savedAt:
+                    new Date()
+                        .toISOString(),
+
+                studentName,
+
+                goal,
+
+                entries,
+
+                attendances,
+
+                settings,
+
+                entryDraft
+            };
+
+
+            downloadBlob(
+
+                new Blob(
+                    [
+                        JSON.stringify(
+                            backup,
+                            null,
+                            2
+                        )
+                    ],
+                    {
+                        type:
+                            'application/json'
+                    }
+                ),
+
+                `OverTime_Backup_${localDate()}.json`
+            );
+
+        }
+    );
+
+
+
+$('importBackup')
+    .addEventListener(
+        'change',
+        async event => {
+
+            const file =
+                event.target
+                    .files?.[0];
+
+
+            event.target.value = '';
+
+
+            if (!file) {
+                return;
+            }
+
+
+            try {
+
+                const backup =
+                    JSON.parse(
+                        await file.text()
+                    );
+
+
+                if (
+                    !Array.isArray(
+                        backup.entries
+                    )
+                ) {
+
+                    throw Error(
+                        'Invalid backup.'
+                    );
+
+                }
+
+
+                if (
+                    !confirm(
+                        'Replace your current data with this backup?'
+                    )
+                ) {
+                    return;
+                }
+
+
+                entries =
+                    backup.entries || [];
+
+
+                attendances =
+                    backup.attendances || [];
+
+
+                studentName =
+                    backup.studentName || '';
+
+
+                goal =
+                    Number(
+                        backup.goal
+                    ) || 468;
+
+
+                settings = {
+
+                    ...settings,
+
+                    ...(backup.settings || {})
+                };
+
+
+                entryDraft =
+                    backup.entryDraft || null;
+
+
+                await saveData();
+
+
+                updateStudentInfo();
+
+                updateSettingsForm();
+
+                applyDarkMode();
+
+                render();
 
 
                 toast(
-                    'Could not create the Word report.'
+                    'Backup imported.'
+                );
+
+            } catch (error) {
+
+                console.error(error);
+
+                toast(
+                    'Invalid backup file.'
                 );
 
             }
@@ -4236,8 +4614,289 @@ $('exportButton')
     );
 
 
-/* =================================
-   START APPLICATION
-================================= */
+/* =====================================================
+   ONLINE / OFFLINE
+===================================================== */
+
+function updateConnectionStatus() {
+
+    const online =
+        navigator.onLine;
+
+
+    $('connectionStatus')
+        .classList
+        .toggle(
+            'offline',
+            !online
+        );
+
+
+    $('connectionStatus')
+        .lastChild.textContent =
+        online
+            ? ' Online'
+            : ' Offline';
+
+}
+
+
+
+window.addEventListener(
+    'online',
+    () => {
+
+        updateConnectionStatus();
+
+        toast(
+            'Back online.'
+        );
+
+    }
+);
+
+
+window.addEventListener(
+    'offline',
+    () => {
+
+        updateConnectionStatus();
+
+        toast(
+            'You are offline. Local tracking still works.'
+        );
+
+    }
+);
+
+
+/* =====================================================
+   PWA
+===================================================== */
+
+function registerPWA() {
+
+    if (
+        'serviceWorker' in navigator
+    ) {
+
+        navigator.serviceWorker
+            .register(
+                './service-worker.js'
+            )
+            .catch(
+                console.error
+            );
+
+    }
+
+}
+
+
+
+window.addEventListener(
+    'beforeinstallprompt',
+    event => {
+
+        event.preventDefault();
+
+
+        deferredInstallPrompt =
+            event;
+
+
+        $('installAppButton').hidden =
+            false;
+
+
+        $('settingsInstallButton').hidden =
+            false;
+
+    }
+);
+
+
+
+async function installPWA() {
+
+    if (!deferredInstallPrompt) {
+
+        toast(
+            'The app is already installed or installation is not currently available.'
+        );
+
+        return;
+
+    }
+
+
+    deferredInstallPrompt.prompt();
+
+
+    await deferredInstallPrompt
+        .userChoice;
+
+
+    deferredInstallPrompt =
+        null;
+
+
+    $('installAppButton').hidden =
+        true;
+
+
+    $('settingsInstallButton').hidden =
+        true;
+
+}
+
+
+
+$('installAppButton')
+    .addEventListener(
+        'click',
+        installPWA
+    );
+
+
+$('settingsInstallButton')
+    .addEventListener(
+        'click',
+        installPWA
+    );
+
+
+/* =====================================================
+   GLOBAL CLICK EVENTS
+===================================================== */
+
+document.addEventListener(
+    'click',
+    event => {
+
+        const button =
+            event.target
+                .closest('button');
+
+
+        if (!button) {
+            return;
+        }
+
+
+        if (button.dataset.page) {
+
+            switchPage(
+                button.dataset.page
+            );
+
+        }
+
+
+        if (
+            button.hasAttribute(
+                'data-new'
+            )
+        ) {
+
+            openForm();
+
+        }
+
+
+        if (button.dataset.detail) {
+
+            openDetail(
+                button.dataset.detail
+            );
+
+        }
+
+
+        if (button.dataset.edit) {
+
+            $('detailDialog')
+                .close();
+
+
+            openForm(
+                button.dataset.edit
+            );
+
+        }
+
+
+        if (button.dataset.delete) {
+
+            deleteEntry(
+                button.dataset.delete
+            );
+
+        }
+
+
+        if (
+            button.dataset.pageNumber
+        ) {
+
+            entriesCurrentPage =
+                Number(
+                    button.dataset
+                        .pageNumber
+                );
+
+
+            renderEntries();
+
+        }
+
+
+        if (
+            button.dataset.calendarDate
+        ) {
+
+            openCalendarDay(
+                button.dataset
+                    .calendarDate
+            );
+
+        }
+
+
+        if (
+            button.dataset.editAttendance
+        ) {
+
+            openAttendanceEdit(
+                button.dataset
+                    .editAttendance
+            );
+
+        }
+
+    }
+);
+
+
+/* =====================================================
+   TOP DATE
+===================================================== */
+
+$('today')
+    .textContent =
+    new Date()
+        .toLocaleDateString(
+            'en-PH',
+            {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric'
+            }
+        );
+
+
+/* =====================================================
+   START
+===================================================== */
 
 initialize();
