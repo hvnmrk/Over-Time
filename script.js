@@ -4903,6 +4903,34 @@ $('overviewName').textContent =
     studentName
         ? studentName.split(' ')[0]
         : 'Student';
+const menuButton = document.getElementById('menuButton');
+const sidebar = document.getElementById('sidebar');
+const backdrop = document.getElementById('backdrop');
+
+menuButton?.addEventListener('click', () => {
+    sidebar.classList.toggle('open');
+
+    backdrop.hidden =
+        !sidebar.classList.contains('open');
+});
+
+backdrop?.addEventListener('click', () => {
+    sidebar.classList.remove('open');
+    backdrop.hidden = true;
+});
+
+
+document.querySelectorAll('.nav-link').forEach(button => {
+    button.addEventListener('click', () => {
+
+        if (window.innerWidth <= 850) {
+            sidebar.classList.remove('open');
+            backdrop.hidden = true;
+        }
+
+    });
+});
+
 
 /* =====================================================
    START
