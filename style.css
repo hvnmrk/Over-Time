@@ -2873,3 +2873,29 @@ footer {
   }
 
 }
+
+.auth-brand {
+  width: 100%;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 10px;
+
+  margin-bottom: 8px;
+}
+
+.auth-brand img {
+  width: 38px;
+  height: 38px;
+
+  object-fit: contain;
+
+  border-radius: 9px;
+}
+
+.auth-brand span {
+  font-size: 18px;
+  font-weight: 800;
+}
