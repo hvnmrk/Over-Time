@@ -524,7 +524,9 @@ function updateStudentInfo() {
 
     $('hoursGoal').value =
         goal;
-
+$('overviewName').textContent = studentName
+   ?studentName.split(' ')[0]
+   :student';
 }
 
 
