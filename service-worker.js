@@ -1,6 +1,4 @@
-const CACHE_NAME =
-    'overtime-static-v1';
-
+const CACHE_NAME = 'overtime-static-v4';
 
 const STATIC_FILES = [
     '/',
@@ -13,117 +11,38 @@ const STATIC_FILES = [
 ];
 
 
-
+// =====================================================
 // INSTALL
+// =====================================================
 
-let deferredInstallPrompt =
-    null;
-
-
-window.addEventListener(
-    'beforeinstallprompt',
+self.addEventListener(
+    'install',
     event => {
 
-        event.preventDefault();
+        event.waitUntil(
+
+            caches
+                .open(CACHE_NAME)
+                .then(cache => {
+
+                    return cache.addAll(
+                        STATIC_FILES
+                    );
+
+                })
+
+        );
 
 
-        deferredInstallPrompt =
-            event;
-
-
-        if (
-            $('installAppButton')
-        ) {
-
-            $('installAppButton').hidden =
-                false;
-
-        }
-
-
-        if (
-            $('settingsInstallButton')
-        ) {
-
-            $('settingsInstallButton').hidden =
-                false;
-
-        }
+        self.skipWaiting();
 
     }
 );
 
 
-async function installApp() {
-
-    if (
-        !deferredInstallPrompt
-    ) {
-
-        toast(
-            'Install is not available yet.'
-        );
-
-        return;
-
-    }
-
-
-    deferredInstallPrompt.prompt();
-
-
-    const {
-        outcome
-    } =
-        await deferredInstallPrompt
-            .userChoice;
-
-
-    console.log(
-        'Install result:',
-        outcome
-    );
-
-
-    deferredInstallPrompt =
-        null;
-
-
-    if (
-        $('installAppButton')
-    ) {
-
-        $('installAppButton').hidden =
-            true;
-
-    }
-
-
-    if (
-        $('settingsInstallButton')
-    ) {
-
-        $('settingsInstallButton').hidden =
-            true;
-
-    }
-
-}
-$('installAppButton')
-    ?.addEventListener(
-        'click',
-        installApp
-    );
-
-
-$('settingsInstallButton')
-    ?.addEventListener(
-        'click',
-        installApp
-    );
-
-
+// =====================================================
 // ACTIVATE
+// =====================================================
 
 self.addEventListener(
     'activate',
@@ -133,28 +52,23 @@ self.addEventListener(
 
             caches
                 .keys()
-                .then(
-                    keys => {
+                .then(keys => {
 
-                        return Promise.all(
+                    return Promise.all(
 
-                            keys
-                                .filter(
-                                    key =>
-                                        key !==
-                                        CACHE_NAME
-                                )
-                                .map(
-                                    key =>
-                                        caches.delete(
-                                            key
-                                        )
-                                )
+                        keys
+                            .filter(
+                                key =>
+                                    key !== CACHE_NAME
+                            )
+                            .map(
+                                key =>
+                                    caches.delete(key)
+                            )
 
-                        );
+                    );
 
-                    }
-                )
+                })
 
         );
 
@@ -165,9 +79,9 @@ self.addEventListener(
 );
 
 
-
+// =====================================================
 // FETCH
-
+// =====================================================
 
 self.addEventListener(
     'fetch',
@@ -178,8 +92,7 @@ self.addEventListener(
 
 
         if (
-            request.method !==
-            'GET'
+            request.method !== 'GET'
         ) {
 
             return;
@@ -193,6 +106,8 @@ self.addEventListener(
             );
 
 
+        // DO NOT cache Supabase,
+        // Lucide, CDN, or other external requests.
         if (
             url.origin !==
             self.location.origin
@@ -205,44 +120,36 @@ self.addEventListener(
 
         event.respondWith(
 
-            fetch(
-                request
-            )
+            fetch(request)
 
-                .then(
-                    response => {
+                .then(response => {
 
-                        if (
-                            response &&
-                            response.ok
-                        ) {
+                    if (
+                        response &&
+                        response.ok
+                    ) {
 
-                            const copy =
-                                response.clone();
+                        const copy =
+                            response.clone();
 
 
-                            caches
-                                .open(
-                                    CACHE_NAME
-                                )
-                                .then(
-                                    cache => {
+                        caches
+                            .open(CACHE_NAME)
+                            .then(cache => {
 
-                                        cache.put(
-                                            request,
-                                            copy
-                                        );
-
-                                    }
+                                cache.put(
+                                    request,
+                                    copy
                                 );
 
-                        }
-
-
-                        return response;
+                            });
 
                     }
-                )
+
+
+                    return response;
+
+                })
 
                 .catch(
                     async () => {
@@ -272,7 +179,13 @@ self.addEventListener(
                         }
 
 
-                        return Response.error();
+                        return new Response(
+                            'Offline',
+                            {
+                                status: 503,
+                                statusText: 'Offline'
+                            }
+                        );
 
                     }
                 )
@@ -281,40 +194,3 @@ self.addEventListener(
 
     }
 );
-
-if (
-    'serviceWorker' in navigator
-) {
-
-    window.addEventListener(
-        'load',
-        async () => {
-
-            try {
-
-                const registration =
-                    await navigator
-                        .serviceWorker
-                        .register(
-                            '/service-worker.js'
-                        );
-
-
-                console.log(
-                    'Service Worker registered:',
-                    registration.scope
-                );
-
-            } catch (error) {
-
-                console.error(
-                    'Service Worker registration failed:',
-                    error
-                );
-
-            }
-
-        }
-    );
-
-}

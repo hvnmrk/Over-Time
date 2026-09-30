@@ -1,13 +1,19 @@
-// 
+// =====================================================
+// OVER-TIME
+// COMPLETE SCRIPT.JS
+// =====================================================
+
+
+// =====================================================
 // SUPABASE CONFIG
-// 
+// =====================================================
+
 
 const SUPABASE_URL =
     'https://gpswmjqsrrsnoxpjzbcj.supabase.co';
 
 const SUPABASE_KEY =
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdwc3dtanFzcnJzbm94cGp6YmNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3Mzg5MTYsImV4cCI6MjEwNjMxNDkxNn0.HZBarYW20s4Thk5mP3CS6NvdNhrgS1nrb0_S_YXVYbU';
-
 
 const supabaseClient =
     supabase.createClient(
@@ -17,9 +23,9 @@ const supabaseClient =
 
 
 
-// 
+// =====================================================
 // GLOBAL STATE
-// 
+// =====================================================
 
 let currentUser = null;
 
@@ -37,7 +43,8 @@ let selectedEvidencePreviewURL = null;
 let existingEvidencePath = null;
 let existingEvidenceUrl = null;
 
-let calendarDate = new Date();
+let calendarDate =
+    new Date();
 
 let entriesCurrentPage = 1;
 let entriesPageSize = 10;
@@ -46,35 +53,65 @@ let deferredInstallPrompt = null;
 
 let toastTimer = null;
 
-let reminderAlreadyShown = false;
-
 let appOpening = false;
+
+let reminderShownDate = null;
 
 
 let settings = {
 
-    darkMode: false,
+    darkMode:
+        false,
 
-    autoBreakEnabled: true,
+    autoBreakEnabled:
+        true,
 
-    autoBreakThreshold: 9,
+    autoBreakThreshold:
+        9,
 
-    autoBreakMinutes: 60,
+    autoBreakMinutes:
+        60,
 
-    reminderEnabled: false,
+    reminderEnabled:
+        false,
 
-    reminderTime: '17:00'
+    reminderTime:
+        '17:00'
 
 };
 
 
 
-// 
-// BASIC HELPERS
-// 
+// =====================================================
+// DOM HELPER
+// =====================================================
 
 const $ = id =>
     document.getElementById(id);
+
+
+
+// =====================================================
+// SAFE HELPERS
+// =====================================================
+
+function safeString(value) {
+
+    return String(
+        value ?? ''
+    );
+
+}
+
+
+
+function safeLower(value) {
+
+    return safeString(
+        value
+    ).toLocaleLowerCase();
+
+}
 
 
 
@@ -88,15 +125,22 @@ function localDate(
     const month =
         String(
             date.getMonth() + 1
-        ).padStart(2, '0');
+        ).padStart(
+            2,
+            '0'
+        );
 
     const day =
         String(
             date.getDate()
-        ).padStart(2, '0');
+        ).padStart(
+            2,
+            '0'
+        );
 
 
     return `${year}-${month}-${day}`;
+
 }
 
 
@@ -110,16 +154,23 @@ function currentTime() {
     const hour =
         String(
             now.getHours()
-        ).padStart(2, '0');
+        ).padStart(
+            2,
+            '0'
+        );
 
 
     const minute =
         String(
             now.getMinutes()
-        ).padStart(2, '0');
+        ).padStart(
+            2,
+            '0'
+        );
 
 
     return `${hour}:${minute}`;
+
 }
 
 
@@ -140,12 +191,20 @@ function formatDate(value) {
     return date.toLocaleDateString(
         undefined,
         {
-            weekday: 'short',
-            month: 'long',
-            day: 'numeric',
-            year: 'numeric'
+            weekday:
+                'short',
+
+            month:
+                'long',
+
+            day:
+                'numeric',
+
+            year:
+                'numeric'
         }
     );
+
 }
 
 
@@ -166,10 +225,14 @@ function formatShortDate(value) {
     return date.toLocaleDateString(
         undefined,
         {
-            month: 'short',
-            day: 'numeric'
+            month:
+                'short',
+
+            day:
+                'numeric'
         }
     );
+
 }
 
 
@@ -182,14 +245,44 @@ function formatTime(value) {
 
 
     const parts =
-        value.split(':');
+        safeString(
+            value
+        ).split(':');
+
+
+    if (
+        parts.length <
+        2
+    ) {
+
+        return '—';
+
+    }
 
 
     const hour =
-        Number(parts[0]);
+        Number(
+            parts[0]
+        );
 
     const minute =
-        Number(parts[1]);
+        Number(
+            parts[1]
+        );
+
+
+    if (
+        Number.isNaN(
+            hour
+        ) ||
+        Number.isNaN(
+            minute
+        )
+    ) {
+
+        return '—';
+
+    }
 
 
     const date =
@@ -207,10 +300,14 @@ function formatTime(value) {
     return date.toLocaleTimeString(
         [],
         {
-            hour: 'numeric',
-            minute: '2-digit'
+            hour:
+                'numeric',
+
+            minute:
+                '2-digit'
         }
     );
+
 }
 
 
@@ -219,12 +316,58 @@ function escapeHTML(
     value = ''
 ) {
 
-    return String(value)
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#039;');
+    return safeString(
+        value
+    )
+        .replaceAll(
+            '&',
+            '&amp;'
+        )
+        .replaceAll(
+            '<',
+            '&lt;'
+        )
+        .replaceAll(
+            '>',
+            '&gt;'
+        )
+        .replaceAll(
+            '"',
+            '&quot;'
+        )
+        .replaceAll(
+            "'",
+            '&#039;'
+        );
+
+}
+
+
+
+function createIcons() {
+
+    try {
+
+        if (
+            window.lucide &&
+            typeof window.lucide.createIcons ===
+            'function'
+        ) {
+
+            window.lucide
+                .createIcons();
+
+        }
+
+    } catch (error) {
+
+        console.warn(
+            'Lucide icon error:',
+            error
+        );
+
+    }
+
 }
 
 
@@ -236,12 +379,20 @@ function toast(message) {
 
 
     if (!element) {
+
+        console.log(
+            message
+        );
+
         return;
+
     }
 
 
     element.textContent =
-        message;
+        safeString(
+            message
+        );
 
 
     element.classList.add(
@@ -258,54 +409,56 @@ function toast(message) {
         setTimeout(
             () => {
 
-                element.classList.remove(
-                    'show'
-                );
+                element.classList
+                    .remove(
+                        'show'
+                    );
 
             },
             2600
         );
+
 }
 
 
 
-function createIcons() {
-
-    if (
-        window.lucide
-    ) {
-
-        lucide.createIcons();
-
-    }
-}
-
-
-
-// 
-// LOGIN / SIGNUP VIEW
-// 
+// =====================================================
+// AUTH VIEW
+// =====================================================
 
 function showLogin() {
 
     if ($('loginView')) {
-        $('loginView').hidden = false;
+
+        $('loginView').hidden =
+            false;
+
     }
 
 
     if ($('signupView')) {
-        $('signupView').hidden = true;
+
+        $('signupView').hidden =
+            true;
+
     }
 
 
     if ($('loginError')) {
-        $('loginError').textContent = '';
+
+        $('loginError').textContent =
+            '';
+
     }
 
 
     if ($('signupError')) {
-        $('signupError').textContent = '';
+
+        $('signupError').textContent =
+            '';
+
     }
+
 }
 
 
@@ -313,23 +466,36 @@ function showLogin() {
 function showSignup() {
 
     if ($('loginView')) {
-        $('loginView').hidden = true;
+
+        $('loginView').hidden =
+            true;
+
     }
 
 
     if ($('signupView')) {
-        $('signupView').hidden = false;
+
+        $('signupView').hidden =
+            false;
+
     }
 
 
     if ($('loginError')) {
-        $('loginError').textContent = '';
+
+        $('loginError').textContent =
+            '';
+
     }
 
 
     if ($('signupError')) {
-        $('signupError').textContent = '';
+
+        $('signupError').textContent =
+            '';
+
     }
+
 }
 
 
@@ -350,36 +516,42 @@ $('showLogin')
 
 
 
-// 
+// =====================================================
 // SIGN UP
-// 
+// =====================================================
 
 async function signUpUser() {
 
     const name =
-        $('signupName')
-            .value
-            .trim();
+        safeString(
+            $('signupName')?.value
+        ).trim();
 
 
     const email =
-        $('signupEmail')
-            .value
-            .trim();
+        safeString(
+            $('signupEmail')?.value
+        ).trim();
 
 
     const password =
-        $('signupPassword')
-            .value;
+        safeString(
+            $('signupPassword')?.value
+        );
 
 
-    const confirmation =
-        $('signupConfirmPassword')
-            .value;
+    const confirmPassword =
+        safeString(
+            $('signupConfirmPassword')?.value
+        );
 
 
-    $('signupError').textContent =
-        '';
+    if ($('signupError')) {
+
+        $('signupError').textContent =
+            '';
+
+    }
 
 
     if (!name) {
@@ -388,6 +560,7 @@ async function signUpUser() {
             'Enter your name.';
 
         return;
+
     }
 
 
@@ -397,6 +570,7 @@ async function signUpUser() {
             'Enter your email.';
 
         return;
+
     }
 
 
@@ -409,27 +583,36 @@ async function signUpUser() {
             'Password must be at least 6 characters.';
 
         return;
+
     }
 
 
     if (
         password !==
-        confirmation
+        confirmPassword
     ) {
 
         $('signupError').textContent =
             'Passwords do not match.';
 
         return;
+
     }
 
 
-    $('signupButton').disabled =
-        true;
+    const button =
+        $('signupButton');
 
 
-    $('signupButton').textContent =
-        'Creating account...';
+    if (button) {
+
+        button.disabled =
+            true;
+
+        button.textContent =
+            'Creating account...';
+
+    }
 
 
     try {
@@ -438,7 +621,8 @@ async function signUpUser() {
             data,
             error
         } =
-            await supabaseClient.auth
+            await supabaseClient
+                .auth
                 .signUp({
 
                     email,
@@ -467,8 +651,8 @@ async function signUpUser() {
 
 
         if (
-            data.user &&
-            data.session
+            data?.user &&
+            data?.session
         ) {
 
             await createProfile(
@@ -483,11 +667,12 @@ async function signUpUser() {
 
 
             return;
+
         }
 
 
         $('signupError').textContent =
-            'Account created. Check your email and confirm your account before signing in.';
+            'Account created. Check your email and confirm your account.';
 
     } catch (error) {
 
@@ -497,20 +682,28 @@ async function signUpUser() {
         );
 
 
-        $('signupError').textContent =
-            error.message ||
-            'Unable to create account.';
+        if ($('signupError')) {
+
+            $('signupError').textContent =
+                error?.message ||
+                'Unable to create account.';
+
+        }
 
     } finally {
 
-        $('signupButton').disabled =
-            false;
+        if (button) {
 
+            button.disabled =
+                false;
 
-        $('signupButton').textContent =
-            'Create Account';
+            button.textContent =
+                'Create Account';
+
+        }
 
     }
+
 }
 
 
@@ -523,33 +716,35 @@ $('signupButton')
 
 
 
-// 
+// =====================================================
 // LOGIN
-// FIXED VERSION
-// 
+// =====================================================
 
 async function loginUser() {
 
-    if (
-        appOpening
-    ) {
+    if (appOpening) {
         return;
     }
 
 
     const email =
-        $('loginEmail')
-            .value
-            .trim();
+        safeString(
+            $('loginEmail')?.value
+        ).trim();
 
 
     const password =
-        $('loginPassword')
-            .value;
+        safeString(
+            $('loginPassword')?.value
+        );
 
 
-    $('loginError').textContent =
-        '';
+    if ($('loginError')) {
+
+        $('loginError').textContent =
+            '';
+
+    }
 
 
     if (
@@ -561,6 +756,7 @@ async function loginUser() {
             'Enter your email and password.';
 
         return;
+
     }
 
 
@@ -568,12 +764,15 @@ async function loginUser() {
         $('loginButton');
 
 
-    button.disabled =
-        true;
+    if (button) {
 
+        button.disabled =
+            true;
 
-    button.textContent =
-        'Signing in...';
+        button.textContent =
+            'Signing in...';
+
+    }
 
 
     try {
@@ -582,7 +781,8 @@ async function loginUser() {
             data,
             error
         } =
-            await supabaseClient.auth
+            await supabaseClient
+                .auth
                 .signInWithPassword({
 
                     email,
@@ -596,9 +796,7 @@ async function loginUser() {
         }
 
 
-        if (
-            !data.user
-        ) {
+        if (!data?.user) {
 
             throw new Error(
                 'Unable to load your account.'
@@ -619,20 +817,28 @@ async function loginUser() {
         );
 
 
-        $('loginError').textContent =
-            error.message ||
-            'Unable to sign in.';
+        if ($('loginError')) {
+
+            $('loginError').textContent =
+                error?.message ||
+                'Unable to sign in.';
+
+        }
 
     } finally {
 
-        button.disabled =
-            false;
+        if (button) {
 
+            button.disabled =
+                false;
 
-        button.textContent =
-            'Sign In';
+            button.textContent =
+                'Sign In';
+
+        }
 
     }
+
 }
 
 
@@ -664,72 +870,176 @@ $('loginPassword')
 
 
 
-// 
-// LOG OUT
-// 
+// =====================================================
+// CUSTOM LOGOUT DIALOG
+// =====================================================
 
 $('logoutButton')
     ?.addEventListener(
         'click',
-        async () => {
+        () => {
 
-            const okay =
-                confirm(
-                    'Sign out of Over-Time?'
-                );
+            const dialog =
+                $('logoutDialog');
 
 
-            if (!okay) {
-                return;
-            }
+            if (
+                dialog &&
+                typeof dialog.showModal ===
+                'function'
+            ) {
 
+                dialog.showModal();
 
-            try {
+                createIcons();
 
-                await supabaseClient.auth
-                    .signOut();
+            } else {
 
-            } catch (error) {
-
-                console.error(
-                    error
-                );
+                signOutUser();
 
             }
-
-
-            currentUser =
-                null;
-
-
-            entries =
-                [];
-
-
-            attendances =
-                [];
-
-
-            if ($('mainApp')) {
-                $('mainApp').hidden = true;
-            }
-
-
-            if ($('authScreen')) {
-                $('authScreen').hidden = false;
-            }
-
-
-            showLogin();
 
         }
     );
 
 
 
-// 
+$('cancelLogoutButton')
+    ?.addEventListener(
+        'click',
+        () => {
+
+            $('logoutDialog')
+                ?.close();
+
+        }
+    );
+
+
+
+$('confirmLogoutButton')
+    ?.addEventListener(
+        'click',
+        signOutUser
+    );
+
+
+
+async function signOutUser() {
+
+    const button =
+        $('confirmLogoutButton');
+
+
+    if (button) {
+
+        button.disabled =
+            true;
+
+        button.textContent =
+            'Signing out...';
+
+    }
+
+
+    try {
+
+        const {
+            error
+        } =
+            await supabaseClient
+                .auth
+                .signOut();
+
+
+        if (error) {
+            throw error;
+        }
+
+
+        currentUser =
+            null;
+
+        entries =
+            [];
+
+        attendances =
+            [];
+
+
+        if (
+            $('logoutDialog')?.open
+        ) {
+
+            $('logoutDialog')
+                .close();
+
+        }
+
+
+        if ($('mainApp')) {
+
+            $('mainApp').hidden =
+                true;
+
+        }
+
+
+        if ($('authScreen')) {
+
+            $('authScreen').hidden =
+                false;
+
+        }
+
+
+        showLogin();
+
+
+        toast(
+            'Signed out successfully.'
+        );
+
+    } catch (error) {
+
+        console.error(
+            'Logout error:',
+            error
+        );
+
+
+        toast(
+            error?.message ||
+            'Unable to sign out.'
+        );
+
+    } finally {
+
+        if (button) {
+
+            button.disabled =
+                false;
+
+            button.innerHTML =
+                `
+                <i data-lucide="log-out"></i>
+                Sign Out
+                `;
+
+        }
+
+
+        createIcons();
+
+    }
+
+}
+
+
+
+// =====================================================
 // CHECK AUTH
-// 
+// =====================================================
 
 async function checkAuth() {
 
@@ -739,7 +1049,8 @@ async function checkAuth() {
             data,
             error
         } =
-            await supabaseClient.auth
+            await supabaseClient
+                .auth
                 .getSession();
 
 
@@ -748,61 +1059,76 @@ async function checkAuth() {
         }
 
 
-        const session =
-            data.session;
-
-
         if (
-            session?.user
+            data?.session?.user
         ) {
 
             await openApp(
-                session.user
+                data.session.user
             );
 
-
             return;
+
         }
 
 
-        $('authScreen').hidden =
-            false;
+        if ($('authScreen')) {
+
+            $('authScreen').hidden =
+                false;
+
+        }
 
 
-        $('mainApp').hidden =
-            true;
+        if ($('mainApp')) {
+
+            $('mainApp').hidden =
+                true;
+
+        }
 
     } catch (error) {
 
         console.error(
-            'Auth check:',
+            'Auth check error:',
             error
         );
 
 
-        $('authScreen').hidden =
-            false;
+        if ($('authScreen')) {
+
+            $('authScreen').hidden =
+                false;
+
+        }
 
 
-        $('mainApp').hidden =
-            true;
+        if ($('mainApp')) {
+
+            $('mainApp').hidden =
+                true;
+
+        }
 
     }
+
 }
 
 
 
-// 
+// =====================================================
 // OPEN APP
-// FIXED TO PREVENT DOUBLE OPENING
-// 
+// =====================================================
 
 async function openApp(user) {
 
     if (
+        !user ||
         appOpening
     ) {
+
         return;
+
     }
 
 
@@ -816,20 +1142,25 @@ async function openApp(user) {
             user;
 
 
-        $('profileEmail').textContent =
-            user.email ||
-            '';
+        if ($('profileEmail')) {
+
+            $('profileEmail').textContent =
+                safeString(
+                    user.email
+                );
+
+        }
 
 
-        $('settingsEmail').textContent =
-            user.email ||
-            '';
+        if ($('settingsEmail')) {
 
+            $('settingsEmail').textContent =
+                safeString(
+                    user.email
+                );
 
-        /*
-         * Load sequentially instead of causing
-         * multiple auth/database calls to fight.
-         */
+        }
+
 
         await loadProfile();
 
@@ -838,18 +1169,23 @@ async function openApp(user) {
         await loadEntries();
 
 
-        $('authScreen').hidden =
-            true;
+        if ($('authScreen')) {
+
+            $('authScreen').hidden =
+                true;
+
+        }
 
 
-        $('mainApp').hidden =
-            false;
+        if ($('mainApp')) {
+
+            $('mainApp').hidden =
+                false;
+
+        }
 
 
         render();
-
-
-        createIcons();
 
     } catch (error) {
 
@@ -859,22 +1195,27 @@ async function openApp(user) {
         );
 
 
-        currentUser =
-            null;
-
-
-        $('mainApp').hidden =
-            true;
-
-
-        $('authScreen').hidden =
-            false;
-
-
         if ($('loginError')) {
 
             $('loginError').textContent =
-                'Signed in, but the app could not load. Check the browser console.';
+                error?.message ||
+                'Signed in, but the app could not load.';
+
+        }
+
+
+        if ($('authScreen')) {
+
+            $('authScreen').hidden =
+                false;
+
+        }
+
+
+        if ($('mainApp')) {
+
+            $('mainApp').hidden =
+                true;
 
         }
 
@@ -884,18 +1225,24 @@ async function openApp(user) {
             false;
 
     }
+
 }
 
 
 
-// 
+// =====================================================
 // PROFILE
-// 
+// =====================================================
 
 async function createProfile(
     user,
     name
 ) {
+
+    if (!user?.id) {
+        return;
+    }
+
 
     const {
         error
@@ -908,7 +1255,8 @@ async function createProfile(
                     user.id,
 
                 student_name:
-                    name,
+                    name ||
+                    'Student',
 
                 required_hours:
                     468,
@@ -935,20 +1283,16 @@ async function createProfile(
 
 
     if (error) {
-
-        console.error(
-            'Profile creation:',
-            error
-        );
-
+        throw error;
     }
+
 }
 
 
 
 async function loadProfile() {
 
-    if (!currentUser) {
+    if (!currentUser?.id) {
         return;
     }
 
@@ -975,9 +1319,11 @@ async function loadProfile() {
     if (!data) {
 
         const fallbackName =
-            currentUser
-                .user_metadata
-                ?.full_name ||
+            safeString(
+                currentUser
+                    ?.user_metadata
+                    ?.full_name
+            ).trim() ||
             'Student';
 
 
@@ -995,32 +1341,18 @@ async function loadProfile() {
             468;
 
 
-        settings = {
-
-            darkMode: false,
-
-            autoBreakEnabled: true,
-
-            autoBreakThreshold: 9,
-
-            autoBreakMinutes: 60,
-
-            reminderEnabled: false,
-
-            reminderTime: '17:00'
-
-        };
-
-
         applyDarkMode();
 
 
         return;
+
     }
 
 
     studentName =
-        data.student_name ||
+        safeString(
+            data.student_name
+        ).trim() ||
         'Student';
 
 
@@ -1050,14 +1382,21 @@ async function loadProfile() {
 
 
     settings.autoBreakMinutes =
-        data.auto_break_minutes === null ||
-            data.auto_break_minutes === undefined
-            ?
-            60
-            :
-            Number(
-                data.auto_break_minutes
-            );
+        Number(
+            data.auto_break_minutes
+        );
+
+
+    if (
+        Number.isNaN(
+            settings.autoBreakMinutes
+        )
+    ) {
+
+        settings.autoBreakMinutes =
+            60;
+
+    }
 
 
     settings.reminderEnabled =
@@ -1067,24 +1406,27 @@ async function loadProfile() {
 
 
     settings.reminderTime =
-        data.reminder_time
-            ?
-            String(
-                data.reminder_time
-            ).slice(
-                0,
-                5
-            )
-            :
-            '17:00';
+        safeString(
+            data.reminder_time
+        ).slice(
+            0,
+            5
+        ) ||
+        '17:00';
 
 
     applyDarkMode();
+
 }
 
 
 
 async function saveProfile() {
+
+    if (!currentUser?.id) {
+        return;
+    }
+
 
     const {
         error
@@ -1130,13 +1472,31 @@ async function saveProfile() {
     if (error) {
         throw error;
     }
+
 }
 
 
 
-// 
-// SETTINGS
-// 
+// =====================================================
+// DARK MODE
+// =====================================================
+
+function applyDarkMode() {
+
+    document.body
+        .classList
+        .toggle(
+            'dark',
+            settings.darkMode
+        );
+
+}
+
+
+
+// =====================================================
+// SETTINGS UI
+// =====================================================
 
 function updateSettingsInputs() {
 
@@ -1202,6 +1562,7 @@ function updateSettingsInputs() {
             settings.darkMode;
 
     }
+
 }
 
 
@@ -1215,21 +1576,24 @@ $('settingsForm')
 
 
             const name =
-                $('studentName')
-                    .value
-                    .trim();
+                safeString(
+                    $('studentName')?.value
+                ).trim();
 
 
-            const hours =
+            const requiredHours =
                 Number(
-                    $('hoursGoal')
-                        .value
+                    $('hoursGoal')?.value
                 );
 
 
             if (
                 !name ||
-                hours <= 0
+                !Number.isFinite(
+                    requiredHours
+                ) ||
+                requiredHours <=
+                0
             ) {
 
                 toast(
@@ -1237,6 +1601,7 @@ $('settingsForm')
                 );
 
                 return;
+
             }
 
 
@@ -1245,18 +1610,20 @@ $('settingsForm')
 
 
             goal =
-                hours;
+                requiredHours;
 
 
             settings.autoBreakEnabled =
-                $('autoBreakEnabled')
-                    .checked;
+                Boolean(
+                    $('autoBreakEnabled')
+                        ?.checked
+                );
 
 
             settings.autoBreakThreshold =
                 Number(
                     $('autoBreakThreshold')
-                        .value
+                        ?.value
                 ) ||
                 9;
 
@@ -1264,25 +1631,31 @@ $('settingsForm')
             settings.autoBreakMinutes =
                 Number(
                     $('autoBreakMinutes')
-                        .value
+                        ?.value
                 ) ||
                 0;
 
 
             settings.reminderEnabled =
-                $('reminderEnabled')
-                    .checked;
+                Boolean(
+                    $('reminderEnabled')
+                        ?.checked
+                );
 
 
             settings.reminderTime =
-                $('reminderTime')
-                    .value ||
+                safeString(
+                    $('reminderTime')
+                        ?.value
+                ) ||
                 '17:00';
 
 
             settings.darkMode =
-                $('darkModeToggle')
-                    .checked;
+                Boolean(
+                    $('darkModeToggle')
+                        ?.checked
+                );
 
 
             try {
@@ -1292,15 +1665,11 @@ $('settingsForm')
 
                 applyDarkMode();
 
-
                 updateStudentInfo();
-
 
                 renderDashboard();
 
-
                 renderWeeklyReport();
-
 
                 renderMonthlyReport();
 
@@ -1312,11 +1681,13 @@ $('settingsForm')
             } catch (error) {
 
                 console.error(
+                    'Settings error:',
                     error
                 );
 
 
                 toast(
+                    error?.message ||
                     'Unable to save settings.'
                 );
 
@@ -1333,8 +1704,10 @@ $('darkModeToggle')
         () => {
 
             settings.darkMode =
-                $('darkModeToggle')
-                    .checked;
+                Boolean(
+                    $('darkModeToggle')
+                        ?.checked
+                );
 
 
             applyDarkMode();
@@ -1344,21 +1717,9 @@ $('darkModeToggle')
 
 
 
-function applyDarkMode() {
-
-    document.body
-        .classList
-        .toggle(
-            'dark',
-            settings.darkMode
-        );
-}
-
-
-
-// 
-// STUDENT INFORMATION
-// 
+// =====================================================
+// STUDENT UI
+// =====================================================
 
 function updateStudentInfo() {
 
@@ -1377,10 +1738,14 @@ function updateStudentInfo() {
 
     if ($('overviewName')) {
 
-        $('overviewName').textContent =
+        const first =
             name
                 .split(/\s+/)
-                .filter(Boolean)[0] ||
+                .filter(Boolean)[0];
+
+
+        $('overviewName').textContent =
+            first ||
             'Student';
 
     }
@@ -1393,8 +1758,8 @@ function updateStudentInfo() {
                 .split(/\s+/)
                 .filter(Boolean)
                 .map(
-                    item =>
-                        item[0]
+                    part =>
+                        part.charAt(0)
                 )
                 .slice(
                     0,
@@ -1423,13 +1788,14 @@ function updateStudentInfo() {
 
 
     updateSettingsInputs();
+
 }
 
 
 
-// 
+// =====================================================
 // NAVIGATION
-// 
+// =====================================================
 
 const pageNames = {
 
@@ -1470,6 +1836,7 @@ function closeMenu() {
             true;
 
     }
+
 }
 
 
@@ -1481,13 +1848,11 @@ function switchPage(pageId) {
             '.page'
         )
         .forEach(
-            page => {
-
-                page.classList.remove(
-                    'active'
-                );
-
-            }
+            page =>
+                page.classList
+                    .remove(
+                        'active'
+                    )
         );
 
 
@@ -1496,13 +1861,11 @@ function switchPage(pageId) {
             '.nav-link'
         )
         .forEach(
-            button => {
-
-                button.classList.remove(
-                    'active'
-                );
-
-            }
+            button =>
+                button.classList
+                    .remove(
+                        'active'
+                    )
         );
 
 
@@ -1535,49 +1898,42 @@ function switchPage(pageId) {
     closeMenu();
 
 
-    if (
-        pageId ===
-        'calendar'
-    ) {
+    switch (pageId) {
 
-        renderCalendar();
+        case 'calendar':
 
-    }
+            renderCalendar();
 
-
-    if (
-        pageId ===
-        'attendance'
-    ) {
-
-        renderAttendanceHistory();
-
-    }
+            break;
 
 
-    if (
-        pageId ===
-        'entries'
-    ) {
+        case 'attendance':
 
-        renderEntries();
+            renderAttendanceHistory();
 
-    }
+            break;
 
 
-    if (
-        pageId ===
-        'reports'
-    ) {
+        case 'entries':
 
-        renderWeeklyReport();
+            renderEntries();
 
-        renderMonthlyReport();
+            break;
+
+
+        case 'reports':
+
+            renderWeeklyReport();
+
+            renderMonthlyReport();
+
+            break;
 
     }
 
 
     createIcons();
+
 }
 
 
@@ -1605,10 +1961,6 @@ document
 
 
 
-// 
-// MOBILE SIDEBAR
-// 
-
 $('menuButton')
     ?.addEventListener(
         'click',
@@ -1616,7 +1968,7 @@ $('menuButton')
 
             const open =
                 $('sidebar')
-                    .classList
+                    ?.classList
                     .toggle(
                         'open'
                     );
@@ -1642,11 +1994,16 @@ $('backdrop')
 
 
 
-// 
-// ATTENDANCE
-// 
+// =====================================================
+// ATTENDANCE LOAD
+// =====================================================
 
 async function loadAttendance() {
+
+    if (!currentUser?.id) {
+        return;
+    }
+
 
     const {
         data,
@@ -1655,6 +2012,10 @@ async function loadAttendance() {
         await supabaseClient
             .from('attendance')
             .select('*')
+            .eq(
+                'user_id',
+                currentUser.id
+            )
             .order(
                 'attendance_date',
                 {
@@ -1678,23 +2039,41 @@ async function loadAttendance() {
                         item.id,
 
                     date:
-                        item.attendance_date,
+                        safeString(
+                            item.attendance_date
+                        ),
 
                     timeIn:
-                        item.time_in,
+                        item.time_in ||
+                        null,
 
                     timeOut:
-                        item.time_out
+                        item.time_out ||
+                        null
 
                 })
             );
+
 }
 
 
 
+// =====================================================
+// ATTENDANCE SAVE
+// =====================================================
+
 async function saveAttendance(
     record
 ) {
+
+    if (!currentUser?.id) {
+
+        throw new Error(
+            'You are not signed in.'
+        );
+
+    }
+
 
     const {
         data,
@@ -1746,23 +2125,27 @@ async function saveAttendance(
             data.id,
 
         date:
-            data.attendance_date,
+            safeString(
+                data.attendance_date
+            ),
 
         timeIn:
-            data.time_in,
+            data.time_in ||
+            null,
 
         timeOut:
-            data.time_out
+            data.time_out ||
+            null
 
     };
+
 }
 
 
 
-// 
+// =====================================================
 // TIME IN
-// ONE ATTENDANCE RECORD PER ACTUAL DAY
-// 
+// =====================================================
 
 $('quickTimeIn')
     ?.addEventListener(
@@ -1784,10 +2167,11 @@ $('quickTimeIn')
             if (existing) {
 
                 toast(
-                    'You already have an attendance record for today.'
+                    'You already have attendance for today.'
                 );
 
                 return;
+
             }
 
 
@@ -1823,11 +2207,13 @@ $('quickTimeIn')
             } catch (error) {
 
                 console.error(
+                    'Time In error:',
                     error
                 );
 
 
                 toast(
+                    error?.message ||
                     'Unable to save Time In.'
                 );
 
@@ -1838,9 +2224,9 @@ $('quickTimeIn')
 
 
 
-// 
+// =====================================================
 // TIME OUT
-// 
+// =====================================================
 
 $('quickTimeOut')
     ?.addEventListener(
@@ -1868,33 +2254,18 @@ $('quickTimeOut')
                 );
 
                 return;
+
             }
 
 
-            if (
-                record.timeOut
-            ) {
+            if (record.timeOut) {
 
                 toast(
                     'You already timed out today.'
                 );
 
                 return;
-            }
 
-
-            const now =
-                currentTime();
-
-
-            const okay =
-                confirm(
-                    `Time out at ${formatTime(now)}?`
-                );
-
-
-            if (!okay) {
-                return;
             }
 
 
@@ -1906,7 +2277,7 @@ $('quickTimeOut')
                         ...record,
 
                         timeOut:
-                            now
+                            currentTime()
 
                     });
 
@@ -1933,11 +2304,13 @@ $('quickTimeOut')
             } catch (error) {
 
                 console.error(
+                    'Time Out error:',
                     error
                 );
 
 
                 toast(
+                    error?.message ||
                     'Unable to save Time Out.'
                 );
 
@@ -1948,11 +2321,18 @@ $('quickTimeOut')
 
 
 
-// 
-// TODAY ATTENDANCE UI
-// 
+// =====================================================
+// TODAY ATTENDANCE
+// =====================================================
 
 function renderTodayAttendance() {
+
+    if (
+        !$('attendanceStatus')
+    ) {
+        return;
+    }
+
 
     const today =
         localDate();
@@ -1990,38 +2370,55 @@ function renderTodayAttendance() {
             "You haven't timed in yet.";
 
 
-        $('attendanceTimes').innerHTML =
-            '';
+        if ($('attendanceTimes')) {
+
+            $('attendanceTimes').innerHTML =
+                '';
+
+        }
 
 
-        $('quickTimeIn').disabled =
-            false;
+        if ($('quickTimeIn')) {
+
+            $('quickTimeIn').disabled =
+                false;
+
+        }
 
 
-        $('quickTimeOut').disabled =
-            true;
+        if ($('quickTimeOut')) {
+
+            $('quickTimeOut').disabled =
+                true;
+
+        }
 
 
         return;
+
     }
 
 
-    $('attendanceTimes').innerHTML =
-        `
-        <span>
-            Time In:
-            <strong>
-                ${formatTime(record.timeIn)}
-            </strong>
-        </span>
+    if ($('attendanceTimes')) {
 
-        <span>
-            Time Out:
-            <strong>
-                ${formatTime(record.timeOut)}
-            </strong>
-        </span>
-        `;
+        $('attendanceTimes').innerHTML =
+            `
+            <span>
+                Time In:
+                <strong>
+                    ${formatTime(record.timeIn)}
+                </strong>
+            </span>
+
+            <span>
+                Time Out:
+                <strong>
+                    ${formatTime(record.timeOut)}
+                </strong>
+            </span>
+            `;
+
+    }
 
 
     if (
@@ -2033,12 +2430,20 @@ function renderTodayAttendance() {
             'Currently timed in.';
 
 
-        $('quickTimeIn').disabled =
-            true;
+        if ($('quickTimeIn')) {
+
+            $('quickTimeIn').disabled =
+                true;
+
+        }
 
 
-        $('quickTimeOut').disabled =
-            false;
+        if ($('quickTimeOut')) {
+
+            $('quickTimeOut').disabled =
+                false;
+
+        }
 
 
         if ($('attendanceWarning')) {
@@ -2052,7 +2457,7 @@ function renderTodayAttendance() {
         if ($('attendanceWarningText')) {
 
             $('attendanceWarningText').textContent =
-                'You are currently timed in. Remember to Time Out before leaving.';
+                'Remember to Time Out before leaving.';
 
         }
 
@@ -2062,35 +2467,43 @@ function renderTodayAttendance() {
             'Attendance completed.';
 
 
-        $('quickTimeIn').disabled =
-            true;
+        if ($('quickTimeIn')) {
+
+            $('quickTimeIn').disabled =
+                true;
+
+        }
 
 
-        $('quickTimeOut').disabled =
-            true;
+        if ($('quickTimeOut')) {
+
+            $('quickTimeOut').disabled =
+                true;
+
+        }
 
     }
+
 }
 
 
 
-// 
+// =====================================================
 // ATTENDANCE HISTORY
-// 
+// =====================================================
 
 function renderAttendanceHistory() {
 
-    if (
-        !$('attendanceHistory')
-    ) {
+    if (!$('attendanceHistory')) {
         return;
     }
 
 
     const month =
-        $('attendanceMonthFilter')
-            ?.value ||
-        '';
+        safeString(
+            $('attendanceMonthFilter')
+                ?.value
+        );
 
 
     let list =
@@ -2101,8 +2514,10 @@ function renderAttendanceHistory() {
 
         list =
             list.filter(
-                record =>
-                    record.date.startsWith(
+                item =>
+                    safeString(
+                        item.date
+                    ).startsWith(
                         month
                     )
             );
@@ -2112,15 +2527,17 @@ function renderAttendanceHistory() {
 
     list.sort(
         (a, b) =>
-            b.date.localeCompare(
-                a.date
+            safeString(
+                b.date
+            ).localeCompare(
+                safeString(
+                    a.date
+                )
             )
     );
 
 
-    if (
-        !list.length
-    ) {
+    if (!list.length) {
 
         $('attendanceHistory').innerHTML =
             `
@@ -2130,63 +2547,63 @@ function renderAttendanceHistory() {
             `;
 
         return;
+
     }
 
 
     $('attendanceHistory').innerHTML =
-        list
-            .map(
-                record => `
-                    <article
-                        class="
-                            attendance-record
-                            ${!record.timeOut ? 'incomplete' : ''}
-                        "
-                    >
+        list.map(
+            record => `
+                <article
+                    class="
+                        attendance-record
+                        ${!record.timeOut ? 'incomplete' : ''}
+                    "
+                >
 
-                        <div>
+                    <div>
 
-                            <strong>
-                                ${formatDate(record.date)}
-                            </strong>
+                        <strong>
+                            ${formatDate(record.date)}
+                        </strong>
 
-                            <small>
-                                ${record.timeOut
-                        ?
-                        'Completed'
-                        :
-                        'Incomplete'
-                    }
-                            </small>
+                        <small>
+                            ${record.timeOut
+                    ?
+                    'Completed'
+                    :
+                    'Incomplete'
+                }
+                        </small>
 
-                        </div>
-
-
-                        <div class="attendance-time-value">
-
-                            <span>
-                                TIME IN
-                            </span>
-
-                            ${formatTime(record.timeIn)}
-
-                        </div>
+                    </div>
 
 
-                        <div class="attendance-time-value">
+                    <div class="attendance-time-value">
 
-                            <span>
-                                TIME OUT
-                            </span>
+                        <span>
+                            TIME IN
+                        </span>
 
-                            ${formatTime(record.timeOut)}
+                        ${formatTime(record.timeIn)}
 
-                        </div>
+                    </div>
 
-                    </article>
-                `
-            )
-            .join('');
+
+                    <div class="attendance-time-value">
+
+                        <span>
+                            TIME OUT
+                        </span>
+
+                        ${formatTime(record.timeOut)}
+
+                    </div>
+
+                </article>
+            `
+        ).join('');
+
 }
 
 
@@ -2204,8 +2621,12 @@ $('clearAttendanceMonth')
         'click',
         () => {
 
-            $('attendanceMonthFilter').value =
-                '';
+            if ($('attendanceMonthFilter')) {
+
+                $('attendanceMonthFilter').value =
+                    '';
+
+            }
 
 
             renderAttendanceHistory();
@@ -2215,9 +2636,9 @@ $('clearAttendanceMonth')
 
 
 
-// 
+// =====================================================
 // HOURS
-// 
+// =====================================================
 
 function calculateRawShiftHours(
     start,
@@ -2228,43 +2649,65 @@ function calculateRawShiftHours(
         !start ||
         !end
     ) {
+
         return 0;
+
     }
 
 
-    const [
-        startHour,
-        startMinute
-    ] =
-        start
+    const startParts =
+        safeString(
+            start
+        )
             .split(':')
             .map(Number);
 
 
-    const [
-        endHour,
-        endMinute
-    ] =
-        end
+    const endParts =
+        safeString(
+            end
+        )
             .split(':')
             .map(Number);
-
-
-    const startTotal =
-        startHour * 60 +
-        startMinute;
-
-
-    const endTotal =
-        endHour * 60 +
-        endMinute;
 
 
     if (
+        startParts.length <
+        2 ||
+        endParts.length <
+        2
+    ) {
+
+        return 0;
+
+    }
+
+
+    const startTotal =
+        startParts[0] *
+        60 +
+        startParts[1];
+
+
+    const endTotal =
+        endParts[0] *
+        60 +
+        endParts[1];
+
+
+    if (
+        !Number.isFinite(
+            startTotal
+        ) ||
+        !Number.isFinite(
+            endTotal
+        ) ||
         endTotal <=
         startTotal
     ) {
+
         return 0;
+
     }
 
 
@@ -2272,6 +2715,7 @@ function calculateRawShiftHours(
         endTotal -
         startTotal
     ) / 60;
+
 }
 
 
@@ -2290,14 +2734,18 @@ function calculateHours(
 
 
     if (
-        raw <= 0
+        raw <=
+        0
     ) {
+
         return 0;
+
     }
 
 
-    const minutes =
-        raw * 60 -
+    const remainingMinutes =
+        raw *
+        60 -
         Number(
             breakMinutes ||
             0
@@ -2305,23 +2753,36 @@ function calculateHours(
 
 
     if (
-        minutes <= 0
+        remainingMinutes <=
+        0
     ) {
+
         return 0;
+
     }
 
 
     return Number(
         (
-            minutes /
+            remainingMinutes /
             60
-        ).toFixed(2)
+        ).toFixed(
+            2
+        )
     );
+
 }
 
 
 
 function applyAutoBreak() {
+
+    if (
+        !$('breakMinutes')
+    ) {
+        return;
+    }
+
 
     if (
         !settings.autoBreakEnabled
@@ -2336,15 +2797,16 @@ function applyAutoBreak() {
 
 
         return;
+
     }
 
 
     const raw =
         calculateRawShiftHours(
 
-            $('timeIn').value,
+            $('timeIn')?.value,
 
-            $('timeOut').value
+            $('timeOut')?.value
 
         );
 
@@ -2358,8 +2820,12 @@ function applyAutoBreak() {
             settings.autoBreakMinutes;
 
 
-        $('autoBreakNote').textContent =
-            `${settings.autoBreakMinutes} minute automatic break applied.`;
+        if ($('autoBreakNote')) {
+
+            $('autoBreakNote').textContent =
+                `${settings.autoBreakMinutes} minute automatic break applied.`;
+
+        }
 
     } else {
 
@@ -2367,15 +2833,27 @@ function applyAutoBreak() {
             0;
 
 
-        $('autoBreakNote').textContent =
-            '';
+        if ($('autoBreakNote')) {
+
+            $('autoBreakNote').textContent =
+                '';
+
+        }
 
     }
+
 }
 
 
 
 function updateHoursPreview() {
+
+    if (
+        !$('hoursPreview')
+    ) {
+        return;
+    }
+
 
     if (
         settings.autoBreakEnabled
@@ -2389,17 +2867,18 @@ function updateHoursPreview() {
     const hours =
         calculateHours(
 
-            $('timeIn').value,
+            $('timeIn')?.value,
 
-            $('timeOut').value,
+            $('timeOut')?.value,
 
-            $('breakMinutes').value
+            $('breakMinutes')?.value
 
         );
 
 
     $('hoursPreview').textContent =
         `Rendered hours: ${hours.toFixed(2)} hrs`;
+
 }
 
 
@@ -2426,14 +2905,19 @@ $('breakMinutes')
         'input',
         () => {
 
+            if (!$('hoursPreview')) {
+                return;
+            }
+
+
             const hours =
                 calculateHours(
 
-                    $('timeIn').value,
+                    $('timeIn')?.value,
 
-                    $('timeOut').value,
+                    $('timeOut')?.value,
 
-                    $('breakMinutes').value
+                    $('breakMinutes')?.value
 
                 );
 
@@ -2451,8 +2935,12 @@ $('timeInNow')
         'click',
         () => {
 
-            $('timeIn').value =
-                currentTime();
+            if ($('timeIn')) {
+
+                $('timeIn').value =
+                    currentTime();
+
+            }
 
 
             updateHoursPreview();
@@ -2467,8 +2955,12 @@ $('timeOutNow')
         'click',
         () => {
 
-            $('timeOut').value =
-                currentTime();
+            if ($('timeOut')) {
+
+                $('timeOut').value =
+                    currentTime();
+
+            }
 
 
             updateHoursPreview();
@@ -2478,30 +2970,47 @@ $('timeOutNow')
 
 
 
-// 
-// SUPABASE STORAGE
-// 
+// =====================================================
+// STORAGE
+// =====================================================
 
-async function uploadEvidence(
-    file
-) {
+async function uploadEvidence(file) {
 
     if (
         !file ||
-        !currentUser
+        !currentUser?.id
     ) {
+
         return null;
+
     }
 
 
+    const filename =
+        safeString(
+            file.name
+        );
+
+
+    const pieces =
+        filename.split('.');
+
+
     const extension =
-        file.name
-            .split('.')
-            .pop()
-            .toLowerCase();
+        pieces.length >
+            1
+            ?
+            safeLower(
+                pieces[
+                pieces.length -
+                1
+                ]
+            )
+            :
+            'jpg';
 
 
-    const allowedExtensions =
+    const allowed =
         [
             'jpg',
             'jpeg',
@@ -2511,22 +3020,28 @@ async function uploadEvidence(
 
 
     const safeExtension =
-        allowedExtensions
-            .includes(
-                extension
-            )
+        allowed.includes(
+            extension
+        )
             ?
             extension
             :
             'jpg';
 
 
-    const filename =
-        `${Date.now()}-${crypto.randomUUID()}.${safeExtension}`;
+    const randomPart =
+        typeof crypto.randomUUID ===
+            'function'
+            ?
+            crypto.randomUUID()
+            :
+            `${Date.now()}-${Math.random()
+                .toString(36)
+                .slice(2)}`;
 
 
     const path =
-        `${currentUser.id}/${filename}`;
+        `${currentUser.id}/${Date.now()}-${randomPart}.${safeExtension}`;
 
 
     const {
@@ -2555,13 +3070,12 @@ async function uploadEvidence(
 
 
     return data.path;
+
 }
 
 
 
-async function getEvidenceURL(
-    path
-) {
+async function getEvidenceURL(path) {
 
     if (!path) {
         return null;
@@ -2577,30 +3091,32 @@ async function getEvidenceURL(
             .from('evidence')
             .createSignedUrl(
                 path,
-                60 * 60
+                60 *
+                60
             );
 
 
     if (error) {
 
-        console.error(
-            'Evidence URL:',
+        console.warn(
+            'Evidence URL error:',
             error
         );
 
 
         return null;
+
     }
 
 
-    return data.signedUrl;
+    return data?.signedUrl ||
+        null;
+
 }
 
 
 
-async function deleteEvidence(
-    path
-) {
+async function deleteEvidence(path) {
 
     if (!path) {
         return;
@@ -2620,21 +3136,27 @@ async function deleteEvidence(
 
     if (error) {
 
-        console.error(
-            'Evidence delete:',
+        console.warn(
+            'Evidence delete error:',
             error
         );
 
     }
+
 }
 
 
 
-// 
+// =====================================================
 // LOAD ENTRIES
-// 
+// =====================================================
 
 async function loadEntries() {
+
+    if (!currentUser?.id) {
+        return;
+    }
+
 
     const {
         data,
@@ -2643,6 +3165,10 @@ async function loadEntries() {
         await supabaseClient
             .from('entries')
             .select('*')
+            .eq(
+                'user_id',
+                currentUser.id
+            )
             .order(
                 'entry_date',
                 {
@@ -2658,50 +3184,56 @@ async function loadEntries() {
 
 
     const mapped =
-        (data || [])
-            .map(
-                item => ({
+        (data || []).map(
+            item => ({
 
-                    id:
-                        item.id,
+                id:
+                    item.id,
 
-                    date:
-                        item.entry_date,
+                date:
+                    safeString(
+                        item.entry_date
+                    ),
 
-                    task:
-                        item.task,
+                task:
+                    safeString(
+                        item.task
+                    ),
 
-                    timeIn:
-                        item.time_in,
+                timeIn:
+                    item.time_in ||
+                    null,
 
-                    timeOut:
-                        item.time_out,
+                timeOut:
+                    item.time_out ||
+                    null,
 
-                    breakMinutes:
-                        Number(
-                            item.break_minutes
-                        ) ||
-                        0,
+                breakMinutes:
+                    Number(
+                        item.break_minutes
+                    ) ||
+                    0,
 
-                    hours:
-                        Number(
-                            item.rendered_hours
-                        ) ||
-                        0,
+                hours:
+                    Number(
+                        item.rendered_hours
+                    ) ||
+                    0,
 
-                    description:
-                        item.description ||
-                        '',
+                description:
+                    safeString(
+                        item.description
+                    ),
 
-                    evidencePath:
-                        item.evidence_path ||
-                        null,
+                evidencePath:
+                    item.evidence_path ||
+                    null,
 
-                    evidenceUrl:
-                        null
+                evidenceUrl:
+                    null
 
-                })
-            );
+            })
+        );
 
 
     await Promise.all(
@@ -2728,13 +3260,14 @@ async function loadEntries() {
 
     entries =
         mapped;
+
 }
 
 
 
-// 
+// =====================================================
 // EVIDENCE INPUT
-// 
+// =====================================================
 
 $('evidence')
     ?.addEventListener(
@@ -2743,7 +3276,7 @@ $('evidence')
 
             const file =
                 event.target
-                    .files?.[0] ||
+                    ?.files?.[0] ||
                 null;
 
 
@@ -2768,16 +3301,21 @@ $('evidence')
 
             if (!file) {
 
-                $('attachmentNote').textContent =
-                    existingEvidencePath
-                        ?
-                        'Current photo evidence attached.'
-                        :
-                        '';
+                if ($('attachmentNote')) {
+
+                    $('attachmentNote').textContent =
+                        existingEvidencePath
+                            ?
+                            'Current photo evidence attached.'
+                            :
+                            '';
+
+                }
 
 
                 if (
-                    existingEvidenceUrl
+                    existingEvidenceUrl &&
+                    $('evidencePreviewImage')
                 ) {
 
                     $('evidencePreviewImage').src =
@@ -2787,7 +3325,9 @@ $('evidence')
                     $('evidencePreview').hidden =
                         false;
 
-                } else {
+                } else if (
+                    $('evidencePreview')
+                ) {
 
                     $('evidencePreview').hidden =
                         true;
@@ -2796,11 +3336,16 @@ $('evidence')
 
 
                 return;
+
             }
 
 
-            $('attachmentNote').textContent =
-                `Selected: ${file.name}`;
+            if ($('attachmentNote')) {
+
+                $('attachmentNote').textContent =
+                    `Selected: ${safeString(file.name)}`;
+
+            }
 
 
             selectedEvidencePreviewURL =
@@ -2809,21 +3354,29 @@ $('evidence')
                 );
 
 
-            $('evidencePreviewImage').src =
-                selectedEvidencePreviewURL;
+            if ($('evidencePreviewImage')) {
+
+                $('evidencePreviewImage').src =
+                    selectedEvidencePreviewURL;
+
+            }
 
 
-            $('evidencePreview').hidden =
-                false;
+            if ($('evidencePreview')) {
+
+                $('evidencePreview').hidden =
+                    false;
+
+            }
 
         }
     );
 
 
 
-// 
+// =====================================================
 // ENTRY FORM
-// 
+// =====================================================
 
 function resetEntryForm() {
 
@@ -2858,42 +3411,76 @@ function resetEntryForm() {
     }
 
 
-    $('entryForm').reset();
+    $('entryForm')
+        ?.reset();
 
 
-    $('entryDate').value =
-        localDate();
+    if ($('entryDate')) {
+
+        $('entryDate').value =
+            localDate();
+
+    }
 
 
-    $('breakMinutes').value =
-        settings.autoBreakMinutes;
+    if ($('breakMinutes')) {
+
+        $('breakMinutes').value =
+            settings.autoBreakMinutes;
+
+    }
 
 
-    $('formTitle').textContent =
-        'New Entry';
+    if ($('formTitle')) {
+
+        $('formTitle').textContent =
+            'New Entry';
+
+    }
 
 
-    $('formError').textContent =
-        '';
+    if ($('formError')) {
+
+        $('formError').textContent =
+            '';
+
+    }
 
 
-    $('attachmentNote').textContent =
-        '';
+    if ($('attachmentNote')) {
+
+        $('attachmentNote').textContent =
+            '';
+
+    }
 
 
-    $('evidencePreview').hidden =
-        true;
+    if ($('evidencePreview')) {
+
+        $('evidencePreview').hidden =
+            true;
+
+    }
 
 
-    $('evidencePreviewImage').src =
-        '';
+    if ($('evidencePreviewImage')) {
+
+        $('evidencePreviewImage').src =
+            '';
+
+    }
 
 
-    $('autoBreakNote').textContent =
-        '';
+    if ($('autoBreakNote')) {
+
+        $('autoBreakNote').textContent =
+            '';
+
+    }
 
 
     updateHoursPreview();
+
 }
 
 
@@ -2992,7 +3579,8 @@ function openEntryForm(
 
 
     $('entryDialog')
-        .showModal();
+        ?.showModal();
+
 }
 
 
@@ -3024,7 +3612,7 @@ $('closeForm')
         () => {
 
             $('entryDialog')
-                .close();
+                ?.close();
 
         }
     );
@@ -3037,21 +3625,31 @@ $('cancelForm')
         () => {
 
             $('entryDialog')
-                .close();
+                ?.close();
 
         }
     );
 
 
 
-// 
-// CLOUD DUPLICATE DATE CHECK
-// 
+// =====================================================
+// DUPLICATE LOG CHECK
+// =====================================================
 
 async function checkDuplicateLogDate(
-    selectedDate,
-    currentEntryId = null
+    date,
+    ignoreId = null
 ) {
+
+    if (
+        !currentUser?.id ||
+        !date
+    ) {
+
+        return false;
+
+    }
+
 
     let query =
         supabaseClient
@@ -3063,18 +3661,16 @@ async function checkDuplicateLogDate(
             )
             .eq(
                 'entry_date',
-                selectedDate
+                date
             );
 
 
-    if (
-        currentEntryId
-    ) {
+    if (ignoreId) {
 
         query =
             query.neq(
                 'id',
-                currentEntryId
+                ignoreId
             );
 
     }
@@ -3084,7 +3680,9 @@ async function checkDuplicateLogDate(
         data,
         error
     } =
-        await query.limit(1);
+        await query.limit(
+            1
+        );
 
 
     if (error) {
@@ -3092,27 +3690,20 @@ async function checkDuplicateLogDate(
     }
 
 
-    return (
-        data &&
+    return Array.isArray(
+        data
+    ) &&
         data.length >
-        0
-    );
+        0;
+
 }
 
 
 
-// 
-// SAVE DAILY ENTRY
-//
-// RULE:
-// 1 LOG MAXIMUM FOR EACH SELECTED DATE
-//
-// Sep 30 = allowed
-// Sep 29 = allowed
-// Sep 28 = allowed
-//
-// Another Sep 30 = BLOCKED
-// 
+// =====================================================
+// SAVE ENTRY
+// ONE LOG PER DATE
+// =====================================================
 
 $('entryForm')
     ?.addEventListener(
@@ -3122,37 +3713,46 @@ $('entryForm')
             event.preventDefault();
 
 
-            $('formError').textContent =
-                '';
+            if ($('formError')) {
+
+                $('formError').textContent =
+                    '';
+
+            }
 
 
             const entry = {
 
                 date:
-                    $('entryDate').value,
+                    safeString(
+                        $('entryDate')?.value
+                    ),
 
                 task:
-                    $('task')
-                        .value
-                        .trim(),
+                    safeString(
+                        $('task')?.value
+                    ).trim(),
 
                 timeIn:
-                    $('timeIn').value,
+                    safeString(
+                        $('timeIn')?.value
+                    ),
 
                 timeOut:
-                    $('timeOut').value,
+                    safeString(
+                        $('timeOut')?.value
+                    ),
 
                 breakMinutes:
                     Number(
-                        $('breakMinutes')
-                            .value
+                        $('breakMinutes')?.value
                     ) ||
                     0,
 
                 description:
-                    $('description')
-                        .value
-                        .trim()
+                    safeString(
+                        $('description')?.value
+                    ).trim()
 
             };
 
@@ -3181,6 +3781,7 @@ $('entryForm')
                     'Complete all required fields.';
 
                 return;
+
             }
 
 
@@ -3193,13 +3794,9 @@ $('entryForm')
                     'Time Out must be later than Time In.';
 
                 return;
+
             }
 
-
-            /*
-             * FIRST CHECK:
-             * Current loaded data
-             */
 
             const localDuplicate =
                 entries.some(
@@ -3211,23 +3808,29 @@ $('entryForm')
                 );
 
 
-            if (
-                localDuplicate
-            ) {
+            if (localDuplicate) {
 
                 $('formError').textContent =
-                    'A daily log already exists for this date. Edit the existing log or choose another date.';
+                    'A daily log already exists for this date. Edit the existing log instead.';
 
                 return;
+
             }
 
 
-            $('saveButton').disabled =
-                true;
+            const saveButton =
+                $('saveButton');
 
 
-            $('saveButton').textContent =
-                'Checking date...';
+            if (saveButton) {
+
+                saveButton.disabled =
+                    true;
+
+                saveButton.textContent =
+                    'Checking date...';
+
+            }
 
 
             let newEvidencePath =
@@ -3240,14 +3843,6 @@ $('entryForm')
 
             try {
 
-                /*
-                 * SECOND CHECK:
-                 * Supabase itself
-                 *
-                 * This prevents stale data from another
-                 * browser/device creating duplicates.
-                 */
-
                 const cloudDuplicate =
                     await checkDuplicateLogDate(
 
@@ -3258,19 +3853,22 @@ $('entryForm')
                     );
 
 
-                if (
-                    cloudDuplicate
-                ) {
+                if (cloudDuplicate) {
 
                     $('formError').textContent =
-                        'A daily log already exists for this date. Edit the existing log or choose another date.';
+                        'A daily log already exists for this date. Edit the existing log instead.';
 
                     return;
+
                 }
 
 
-                $('saveButton').textContent =
-                    'Saving...';
+                if (saveButton) {
+
+                    saveButton.textContent =
+                        'Saving...';
+
+                }
 
 
                 if (
@@ -3289,9 +3887,7 @@ $('entryForm')
                 }
 
 
-                if (
-                    editingId
-                ) {
+                if (editingId) {
 
                     const {
                         error
@@ -3431,23 +4027,17 @@ $('entryForm')
                 }
 
 
+                const wasEditing =
+                    Boolean(
+                        editingId
+                    );
+
+
                 await loadEntries();
 
 
                 $('entryDialog')
-                    .close();
-
-
-                render();
-
-
-                toast(
-                    editingId
-                        ?
-                        'Entry updated.'
-                        :
-                        'Entry saved.'
-                );
+                    ?.close();
 
 
                 editingId =
@@ -3465,21 +4055,29 @@ $('entryForm')
                 existingEvidenceUrl =
                     null;
 
+
+                render();
+
+
+                toast(
+                    wasEditing
+                        ?
+                        'Entry updated.'
+                        :
+                        'Entry saved.'
+                );
+
             } catch (error) {
 
                 console.error(
-                    'Entry save:',
+                    'Entry save error:',
                     error
                 );
 
 
-                /*
-                 * If upload succeeded but DB failed,
-                 * clean up the unused new photo.
-                 */
-
                 if (
                     uploadedNewEvidence &&
+                    newEvidencePath &&
                     newEvidencePath !==
                     existingEvidencePath
                 ) {
@@ -3491,18 +4089,25 @@ $('entryForm')
                 }
 
 
-                $('formError').textContent =
-                    error.message ||
-                    'Unable to save entry.';
+                if ($('formError')) {
+
+                    $('formError').textContent =
+                        error?.message ||
+                        'Unable to save entry.';
+
+                }
 
             } finally {
 
-                $('saveButton').disabled =
-                    false;
+                if (saveButton) {
 
+                    saveButton.disabled =
+                        false;
 
-                $('saveButton').textContent =
-                    'Save Entry';
+                    saveButton.textContent =
+                        'Save Entry';
+
+                }
 
             }
 
@@ -3511,9 +4116,9 @@ $('entryForm')
 
 
 
-// 
+// =====================================================
 // DELETE ENTRY
-// 
+// =====================================================
 
 async function deleteEntry(id) {
 
@@ -3530,13 +4135,13 @@ async function deleteEntry(id) {
     }
 
 
-    const okay =
-        confirm(
-            'Delete this daily log? Attendance will remain.'
+    const confirmed =
+        window.confirm(
+            'Delete this daily log?'
         );
 
 
-    if (!okay) {
+    if (!confirmed) {
         return;
     }
 
@@ -3593,22 +4198,25 @@ async function deleteEntry(id) {
     } catch (error) {
 
         console.error(
+            'Delete error:',
             error
         );
 
 
         toast(
+            error?.message ||
             'Unable to delete log.'
         );
 
     }
+
 }
 
 
 
-// 
-// VIEW ENTRY
-// 
+// =====================================================
+// ENTRY DETAIL
+// =====================================================
 
 function openEntryDetail(id) {
 
@@ -3625,61 +4233,71 @@ function openEntryDetail(id) {
     }
 
 
-    $('detailTitle').textContent =
-        entry.task;
+    if ($('detailTitle')) {
+
+        $('detailTitle').textContent =
+            entry.task ||
+            'Daily Log';
+
+    }
 
 
-    $('detailContent').innerHTML =
-        `
-        <p>
-            <strong>Date:</strong>
-            ${formatDate(entry.date)}
-        </p>
+    if ($('detailContent')) {
 
-        <p>
-            <strong>Time:</strong>
-            ${formatTime(entry.timeIn)}
-            –
-            ${formatTime(entry.timeOut)}
-        </p>
-
-        <p>
-            <strong>Break:</strong>
-            ${entry.breakMinutes} minutes
-        </p>
-
-        <p>
-            <strong>Rendered:</strong>
-            ${entry.hours.toFixed(2)} hours
-        </p>
-
-        <hr>
-
-        <p>
-            ${escapeHTML(entry.description)}
-        </p>
-
-        ${entry.evidenceUrl
-            ?
+        $('detailContent').innerHTML =
             `
-                <img
-                    class="detail-photo"
-                    src="${entry.evidenceUrl}"
-                    alt="Photo evidence"
-                >
+            <p>
+                <strong>Date:</strong>
+                ${formatDate(entry.date)}
+            </p>
+
+            <p>
+                <strong>Time:</strong>
+                ${formatTime(entry.timeIn)}
+                –
+                ${formatTime(entry.timeOut)}
+            </p>
+
+            <p>
+                <strong>Break:</strong>
+                ${entry.breakMinutes} minutes
+            </p>
+
+            <p>
+                <strong>Rendered:</strong>
+                ${entry.hours.toFixed(2)} hours
+            </p>
+
+            <hr>
+
+            <p>
+                ${escapeHTML(entry.description)}
+            </p>
+
+            ${entry.evidenceUrl
+                ?
                 `
-            :
-            `
-                <p class="muted">
-                    No photo evidence.
-                </p>
+                    <img
+                        class="detail-photo"
+                        src="${entry.evidenceUrl}"
+                        alt="Photo evidence"
+                    >
+                    `
+                :
                 `
-        }
-        `;
+                    <p class="muted">
+                        No photo evidence.
+                    </p>
+                    `
+            }
+            `;
+
+    }
 
 
     $('detailDialog')
-        .showModal();
+        ?.showModal();
+
 }
 
 
@@ -3690,42 +4308,45 @@ $('closeDetails')
         () => {
 
             $('detailDialog')
-                .close();
+                ?.close();
 
         }
     );
 
 
 
-// 
-// FILTER DAILY LOGS
-// 
+// =====================================================
+// FILTER ENTRIES
+// =====================================================
 
 function getFilteredEntries() {
 
     const search =
-        $('search')
-            ?.value
-            .trim()
-            .toLowerCase() ||
-        '';
+        safeLower(
+            $('search')
+                ?.value
+        ).trim();
 
 
     const from =
-        $('filterDateFrom')
-            ?.value ||
-        '';
+        safeString(
+            $('filterDateFrom')
+                ?.value
+        );
 
 
     const to =
-        $('filterDateTo')
-            ?.value ||
-        '';
+        safeString(
+            $('filterDateTo')
+                ?.value
+        );
 
 
     const sort =
-        $('entrySort')
-            ?.value ||
+        safeString(
+            $('entrySort')
+                ?.value
+        ) ||
         'newest';
 
 
@@ -3734,8 +4355,9 @@ function getFilteredEntries() {
             entry => {
 
                 const text =
-                    `${entry.task} ${entry.description}`
-                        .toLowerCase();
+                    safeLower(
+                        `${safeString(entry.task)} ${safeString(entry.description)}`
+                    );
 
 
                 if (
@@ -3744,7 +4366,9 @@ function getFilteredEntries() {
                         search
                     )
                 ) {
+
                     return false;
+
                 }
 
 
@@ -3753,7 +4377,9 @@ function getFilteredEntries() {
                     entry.date <
                     from
                 ) {
+
                     return false;
+
                 }
 
 
@@ -3762,7 +4388,9 @@ function getFilteredEntries() {
                     entry.date >
                     to
                 ) {
+
                     return false;
+
                 }
 
 
@@ -3776,66 +4404,67 @@ function getFilteredEntries() {
         [...list];
 
 
-    if (
-        sort ===
-        'oldest'
-    ) {
+    switch (sort) {
 
-        list.sort(
-            (a, b) =>
-                a.date.localeCompare(
-                    b.date
-                )
-        );
+        case 'oldest':
 
-    } else if (
-        sort ===
-        'hours-high'
-    ) {
+            list.sort(
+                (a, b) =>
+                    a.date.localeCompare(
+                        b.date
+                    )
+            );
 
-        list.sort(
-            (a, b) =>
-                b.hours -
-                a.hours
-        );
+            break;
 
-    } else if (
-        sort ===
-        'hours-low'
-    ) {
 
-        list.sort(
-            (a, b) =>
-                a.hours -
-                b.hours
-        );
+        case 'hours-high':
 
-    } else {
+            list.sort(
+                (a, b) =>
+                    b.hours -
+                    a.hours
+            );
 
-        list.sort(
-            (a, b) =>
-                b.date.localeCompare(
-                    a.date
-                )
-        );
+            break;
+
+
+        case 'hours-low':
+
+            list.sort(
+                (a, b) =>
+                    a.hours -
+                    b.hours
+            );
+
+            break;
+
+
+        default:
+
+            list.sort(
+                (a, b) =>
+                    b.date.localeCompare(
+                        a.date
+                    )
+            );
 
     }
 
 
     return list;
+
 }
 
 
 
-// 
-// RENDER DAILY LOGS
-// 
+// =====================================================
+// RENDER ENTRIES
+// =====================================================
 
 function renderEntries() {
 
-    if (
-        !$('entriesList')
-    ) {
+    if (!$('entriesList')) {
         return;
     }
 
@@ -3862,15 +4491,11 @@ function renderEntries() {
         );
 
 
-    if (
-        entriesCurrentPage >
-        totalPages
-    ) {
-
-        entriesCurrentPage =
-            totalPages;
-
-    }
+    entriesCurrentPage =
+        Math.min(
+            entriesCurrentPage,
+            totalPages
+        );
 
 
     const start =
@@ -3881,18 +4506,22 @@ function renderEntries() {
         entriesPageSize;
 
 
-    const pageEntries =
+    const pageItems =
         list.slice(
+
             start,
+
             start +
             entriesPageSize
+
         );
 
 
     if ($('entriesResultCount')) {
 
         $('entriesResultCount').textContent =
-            `${list.length} ${list.length === 1
+            `${list.length} ${list.length ===
+                1
                 ?
                 'entry'
                 :
@@ -3902,9 +4531,7 @@ function renderEntries() {
     }
 
 
-    if (
-        !pageEntries.length
-    ) {
+    if (!pageItems.length) {
 
         $('entriesList').innerHTML =
             `
@@ -3916,96 +4543,94 @@ function renderEntries() {
     } else {
 
         $('entriesList').innerHTML =
-            pageEntries
-                .map(
-                    entry => `
-                        <article class="entry-card">
+            pageItems.map(
+                entry => `
+                    <article class="entry-card">
 
-                            <div class="entry-top">
+                        <div class="entry-top">
 
-                                <div>
+                            <div>
 
-                                    <h3>
-                                        ${escapeHTML(entry.task)}
-                                    </h3>
+                                <h3>
+                                    ${escapeHTML(entry.task)}
+                                </h3>
 
-                                    <div class="entry-meta">
+                                <div class="entry-meta">
 
-                                        ${formatDate(entry.date)}
+                                    ${formatDate(entry.date)}
 
-                                        ·
+                                    ·
 
-                                        ${formatTime(entry.timeIn)}
+                                    ${formatTime(entry.timeIn)}
 
-                                        –
+                                    –
 
-                                        ${formatTime(entry.timeOut)}
+                                    ${formatTime(entry.timeOut)}
 
-                                        ·
+                                    ·
 
-                                        ${entry.hours.toFixed(2)} hrs
-
-                                    </div>
+                                    ${entry.hours.toFixed(2)} hrs
 
                                 </div>
 
                             </div>
 
-
-                            <p class="entry-description">
-                                ${escapeHTML(entry.description)}
-                            </p>
+                        </div>
 
 
-                            ${entry.evidenceUrl
-                            ?
-                            `
-                                    <div class="entry-evidence">
+                        <p class="entry-description">
 
-                                        <img
-                                            src="${entry.evidenceUrl}"
-                                            alt="Evidence"
-                                        >
+                            ${escapeHTML(entry.description)}
 
-                                    </div>
-                                    `
-                            :
-                            ''
-                        }
+                        </p>
 
 
-                            <div class="entry-actions">
+                        ${entry.evidenceUrl
+                        ?
+                        `
+                                <div class="entry-evidence">
 
-                                <button
-                                    type="button"
-                                    data-view-entry="${entry.id}"
-                                >
-                                    View
-                                </button>
+                                    <img
+                                        src="${entry.evidenceUrl}"
+                                        alt="Evidence"
+                                    >
+
+                                </div>
+                                `
+                        :
+                        ''
+                    }
 
 
-                                <button
-                                    type="button"
-                                    data-edit-entry="${entry.id}"
-                                >
-                                    Edit
-                                </button>
+                        <div class="entry-actions">
 
+                            <button
+                                type="button"
+                                data-view-entry="${entry.id}"
+                            >
+                                View
+                            </button>
 
-                                <button
-                                    type="button"
-                                    class="danger"
-                                    data-delete-entry="${entry.id}"
-                                >
-                                    Delete
-                                </button>
+                            <button
+                                type="button"
+                                data-edit-entry="${entry.id}"
+                            >
+                                Edit
+                            </button>
 
-                            </div>
+                            <button
+                                type="button"
+                                class="danger"
+                                data-delete-entry="${entry.id}"
+                            >
+                                Delete
+                            </button>
 
-                        </article>
-                    `
-                )
-                .join('');
+                        </div>
+
+                    </article>
+                `
+            ).join('');
 
     }
 
@@ -4013,21 +4638,20 @@ function renderEntries() {
     renderPagination(
         totalPages
     );
+
 }
 
 
 
-// 
+// =====================================================
 // PAGINATION
-// 
+// =====================================================
 
 function renderPagination(
     totalPages
 ) {
 
-    if (
-        !$('entryPagination')
-    ) {
+    if (!$('entryPagination')) {
         return;
     }
 
@@ -4041,6 +4665,7 @@ function renderPagination(
             '';
 
         return;
+
     }
 
 
@@ -4058,7 +4683,8 @@ function renderPagination(
 
     for (
         let page = 1;
-        page <= totalPages;
+        page <=
+        totalPages;
         page++
     ) {
 
@@ -4088,48 +4714,63 @@ function renderPagination(
 
     $('entryPagination').innerHTML =
         html;
+
 }
 
 
 
-// 
-// GLOBAL CLICKS
-// 
+// =====================================================
+// GLOBAL DYNAMIC CLICKS
+// =====================================================
 
 document.addEventListener(
     'click',
     event => {
 
-        const view =
-            event.target.closest(
+        const target =
+            event.target;
+
+
+        if (
+            !(target instanceof Element)
+        ) {
+
+            return;
+
+        }
+
+
+        const viewButton =
+            target.closest(
                 '[data-view-entry]'
             );
 
 
-        if (view) {
+        if (viewButton) {
 
             openEntryDetail(
-                view.dataset
+                viewButton.dataset
                     .viewEntry
             );
 
             return;
+
         }
 
 
-        const edit =
-            event.target.closest(
+        const editButton =
+            target.closest(
                 '[data-edit-entry]'
             );
 
 
-        if (edit) {
+        if (editButton) {
 
             const entry =
                 entries.find(
                     item =>
                         item.id ===
-                        edit.dataset
+                        editButton.dataset
                             .editEntry
                 );
 
@@ -4144,63 +4785,65 @@ document.addEventListener(
 
 
             return;
+
         }
 
 
-        const remove =
-            event.target.closest(
+        const deleteButton =
+            target.closest(
                 '[data-delete-entry]'
             );
 
 
-        if (remove) {
+        if (deleteButton) {
 
             deleteEntry(
-                remove.dataset
+                deleteButton.dataset
                     .deleteEntry
             );
 
             return;
+
         }
 
 
-        const pagination =
-            event.target.closest(
+        const pageButton =
+            target.closest(
                 '[data-page-number]'
             );
 
 
         if (
-            pagination &&
-            !pagination.disabled
+            pageButton &&
+            !pageButton.disabled
         ) {
 
             entriesCurrentPage =
                 Number(
-                    pagination.dataset
+                    pageButton.dataset
                         .pageNumber
-                );
+                ) ||
+                1;
 
 
             renderEntries();
 
 
             return;
+
         }
 
 
-        const calendarDay =
-            event.target.closest(
+        const calendarButton =
+            target.closest(
                 '[data-calendar-date]'
             );
 
 
-        if (
-            calendarDay
-        ) {
+        if (calendarButton) {
 
             openCalendarDay(
-                calendarDay.dataset
+                calendarButton.dataset
                     .calendarDate
             );
 
@@ -4211,9 +4854,9 @@ document.addEventListener(
 
 
 
-// 
-// ENTRY FILTER EVENTS
-// 
+// =====================================================
+// FILTER EVENTS
+// =====================================================
 
 [
     'search',
@@ -4232,7 +4875,6 @@ document.addEventListener(
                     entriesCurrentPage =
                         1;
 
-
                     renderEntries();
 
                 }
@@ -4246,7 +4888,6 @@ document.addEventListener(
 
                     entriesCurrentPage =
                         1;
-
 
                     renderEntries();
 
@@ -4263,20 +4904,36 @@ $('clearEntryFilters')
         'click',
         () => {
 
-            $('search').value =
-                '';
+            if ($('search')) {
+
+                $('search').value =
+                    '';
+
+            }
 
 
-            $('filterDateFrom').value =
-                '';
+            if ($('filterDateFrom')) {
+
+                $('filterDateFrom').value =
+                    '';
+
+            }
 
 
-            $('filterDateTo').value =
-                '';
+            if ($('filterDateTo')) {
+
+                $('filterDateTo').value =
+                    '';
+
+            }
 
 
-            $('entrySort').value =
-                'newest';
+            if ($('entrySort')) {
+
+                $('entrySort').value =
+                    'newest';
+
+            }
 
 
             entriesCurrentPage =
@@ -4290,19 +4947,19 @@ $('clearEntryFilters')
 
 
 
-// 
+// =====================================================
 // DASHBOARD
-// 
+// =====================================================
 
 function renderDashboard() {
 
     const totalHours =
         entries.reduce(
             (
-                sum,
+                total,
                 entry
             ) =>
-                sum +
+                total +
                 Number(
                     entry.hours ||
                     0
@@ -4320,7 +4977,8 @@ function renderDashboard() {
 
 
     const percentage =
-        goal > 0
+        goal >
+            0
             ?
             Math.min(
                 100,
@@ -4335,7 +4993,9 @@ function renderDashboard() {
     if ($('renderedHours')) {
 
         $('renderedHours').textContent =
-            totalHours.toFixed(2);
+            totalHours.toFixed(
+                2
+            );
 
     }
 
@@ -4396,12 +5056,11 @@ function renderDashboard() {
     }
 
 
-    const month =
-        localDate()
-            .slice(
-                0,
-                7
-            );
+    const currentMonth =
+        localDate().slice(
+            0,
+            7
+        );
 
 
     if ($('monthLogCount')) {
@@ -4410,7 +5069,7 @@ function renderDashboard() {
             entries.filter(
                 item =>
                     item.date.startsWith(
-                        month
+                        currentMonth
                     )
             ).length;
 
@@ -4421,7 +5080,7 @@ function renderDashboard() {
         attendances.filter(
             item =>
                 item.date.startsWith(
-                    month
+                    currentMonth
                 )
         );
 
@@ -4445,50 +5104,48 @@ function renderDashboard() {
     }
 
 
-    const recent =
-        [...entries]
-            .sort(
-                (a, b) =>
-                    b.date.localeCompare(
-                        a.date
-                    )
-            )
-            .slice(
-                0,
-                4
-            );
-
-
     if ($('recentEntries')) {
+
+        const recent =
+            [...entries]
+                .sort(
+                    (a, b) =>
+                        b.date.localeCompare(
+                            a.date
+                        )
+                )
+                .slice(
+                    0,
+                    4
+                );
+
 
         $('recentEntries').innerHTML =
             recent.length
                 ?
-                recent
-                    .map(
-                        entry => `
-                            <div class="recent-item">
+                recent.map(
+                    entry => `
+                        <div class="recent-item">
 
-                                <div>
+                            <div>
 
-                                    <strong>
-                                        ${escapeHTML(entry.task)}
-                                    </strong>
+                                <strong>
+                                    ${escapeHTML(entry.task)}
+                                </strong>
 
-                                    <small>
-                                        ${formatShortDate(entry.date)}
-                                    </small>
-
-                                </div>
-
-                                <b>
-                                    ${entry.hours.toFixed(2)} hrs
-                                </b>
+                                <small>
+                                    ${formatShortDate(entry.date)}
+                                </small>
 
                             </div>
-                        `
-                    )
-                    .join('')
+
+                            <b>
+                                ${entry.hours.toFixed(2)} hrs
+                            </b>
+
+                        </div>
+                    `
+                ).join('')
                 :
                 `
                 <div class="empty">
@@ -4497,13 +5154,14 @@ function renderDashboard() {
                 `;
 
     }
+
 }
 
 
 
-// 
+// =====================================================
 // CALENDAR
-// 
+// =====================================================
 
 function getCalendarState(date) {
 
@@ -4552,7 +5210,7 @@ function getCalendarState(date) {
                 'complete',
 
             text:
-                'Log + Attendance'
+                'Complete'
 
         };
 
@@ -4590,6 +5248,7 @@ function getCalendarState(date) {
 
 
     return null;
+
 }
 
 
@@ -4597,9 +5256,12 @@ function getCalendarState(date) {
 function renderCalendar() {
 
     if (
-        !$('calendarGrid')
+        !$('calendarGrid') ||
+        !$('calendarTitle')
     ) {
+
         return;
+
     }
 
 
@@ -4650,7 +5312,8 @@ function renderCalendar() {
 
     for (
         let i = 0;
-        i < 42;
+        i <
+        42;
         i++
     ) {
 
@@ -4677,7 +5340,7 @@ function renderCalendar() {
             month;
 
 
-        const today =
+        const isToday =
             dateString ===
             localDate();
 
@@ -4695,14 +5358,13 @@ function renderCalendar() {
                 class="
                     calendar-day
                     ${outside ? 'outside' : ''}
-                    ${today ? 'today' : ''}
+                    ${isToday ? 'today' : ''}
                 "
             >
 
                 <span class="calendar-date-number">
                     ${date.getDate()}
                 </span>
-
 
                 <div class="calendar-day-status">
 
@@ -4729,6 +5391,7 @@ function renderCalendar() {
 
     $('calendarGrid').innerHTML =
         html;
+
 }
 
 
@@ -4803,11 +5466,18 @@ $('calendarToday')
 
 
 
-// 
-// CALENDAR DAY VIEW
-// 
+// =====================================================
+// CALENDAR DAY
+// =====================================================
 
 function openCalendarDay(date) {
+
+    if (
+        !$('calendarDayDialog')
+    ) {
+        return;
+    }
+
 
     const attendance =
         attendances.find(
@@ -4825,10 +5495,14 @@ function openCalendarDay(date) {
         );
 
 
-    $('calendarDayTitle').textContent =
-        formatDate(
-            date
-        );
+    if ($('calendarDayTitle')) {
+
+        $('calendarDayTitle').textContent =
+            formatDate(
+                date
+            );
+
+    }
 
 
     let html =
@@ -4873,15 +5547,7 @@ function openCalendarDay(date) {
     `;
 
 
-    if (!entry) {
-
-        html += `
-            <p class="muted">
-                No daily log for this date.
-            </p>
-        `;
-
-    } else {
+    if (entry) {
 
         html += `
             <article class="calendar-log-detail">
@@ -4914,15 +5580,28 @@ function openCalendarDay(date) {
             </article>
         `;
 
+    } else {
+
+        html += `
+            <p class="muted">
+                No daily log for this date.
+            </p>
+        `;
+
     }
 
 
-    $('calendarDayContent').innerHTML =
-        html;
+    if ($('calendarDayContent')) {
+
+        $('calendarDayContent').innerHTML =
+            html;
+
+    }
 
 
     $('calendarDayDialog')
         .showModal();
+
 }
 
 
@@ -4933,16 +5612,16 @@ $('closeCalendarDay')
         () => {
 
             $('calendarDayDialog')
-                .close();
+                ?.close();
 
         }
     );
 
 
 
-// 
+// =====================================================
 // REPORT TABS
-// 
+// =====================================================
 
 document
     .querySelectorAll(
@@ -4961,9 +5640,10 @@ document
                         )
                         .forEach(
                             tab =>
-                                tab.classList.remove(
-                                    'active'
-                                )
+                                tab.classList
+                                    .remove(
+                                        'active'
+                                    )
                         );
 
 
@@ -4973,41 +5653,43 @@ document
                         )
                         .forEach(
                             section =>
-                                section.classList.remove(
-                                    'active'
-                                )
+                                section.classList
+                                    .remove(
+                                        'active'
+                                    )
                         );
 
 
-                    button.classList.add(
-                        'active'
-                    );
+                    button.classList
+                        .add(
+                            'active'
+                        );
 
 
                     if (
                         button.dataset.reportTab ===
-                        'weekly'
+                        'monthly'
                     ) {
 
-                        $('weeklyReportSection')
-                            .classList
-                            .add(
-                                'active'
-                            );
-
-
-                        renderWeeklyReport();
-
-                    } else {
-
                         $('monthlyReportSection')
-                            .classList
+                            ?.classList
                             .add(
                                 'active'
                             );
 
 
                         renderMonthlyReport();
+
+                    } else {
+
+                        $('weeklyReportSection')
+                            ?.classList
+                            .add(
+                                'active'
+                            );
+
+
+                        renderWeeklyReport();
 
                     }
 
@@ -5022,13 +5704,11 @@ document
 
 
 
-// 
-// WEEK HELPERS
-// 
+// =====================================================
+// REPORT DATA
+// =====================================================
 
-function getWeekBounds(
-    dateString
-) {
+function getWeekBounds(dateString) {
 
     const date =
         new Date(
@@ -5041,7 +5721,8 @@ function getWeekBounds(
 
 
     const difference =
-        day === 0
+        day ===
+            0
             ?
             -6
             :
@@ -5086,6 +5767,7 @@ function getWeekBounds(
             )
 
     };
+
 }
 
 
@@ -5093,7 +5775,10 @@ function getWeekBounds(
 function getWeeklyReportData() {
 
     const selected =
-        $('weekDate')?.value ||
+        safeString(
+            $('weekDate')
+                ?.value
+        ) ||
         localDate();
 
 
@@ -5139,6 +5824,7 @@ function getWeeklyReportData() {
                 )
 
     };
+
 }
 
 
@@ -5146,12 +5832,14 @@ function getWeeklyReportData() {
 function getMonthlyReportData() {
 
     const month =
-        $('reportMonth')?.value ||
-        localDate()
-            .slice(
-                0,
-                7
-            );
+        safeString(
+            $('reportMonth')
+                ?.value
+        ) ||
+        localDate().slice(
+            0,
+            7
+        );
 
 
     return {
@@ -5183,13 +5871,14 @@ function getMonthlyReportData() {
                 )
 
     };
+
 }
 
 
 
-// 
+// =====================================================
 // REPORT TABLE
-// 
+// =====================================================
 
 function createReportTable(list) {
 
@@ -5231,105 +5920,93 @@ function createReportTable(list) {
 
         </div>
 
-        ${list
-            .map(
-                entry => `
-                        <div class="report-table-row">
+        ${list.map(
+        entry => `
+                    <div class="report-table-row">
 
-                            <div class="report-table-cell">
-                                ${formatShortDate(entry.date)}
-                            </div>
+                        <div class="report-table-cell">
+                            ${formatShortDate(entry.date)}
+                        </div>
 
+                        <div class="report-table-cell">
 
-                            <div class="report-table-cell">
+                            <span class="report-task-title">
+                                ${escapeHTML(entry.task)}
+                            </span>
 
-                                <span class="report-task-title">
-                                    ${escapeHTML(entry.task)}
-                                </span>
-
-                                <span class="report-task-description">
-                                    ${escapeHTML(entry.description)}
-                                </span>
-
-                            </div>
-
-
-                            <div class="report-table-cell">
-                                ${formatTime(entry.timeIn)}
-                            </div>
-
-
-                            <div class="report-table-cell">
-                                ${formatTime(entry.timeOut)}
-                            </div>
-
-
-                            <div class="report-table-cell">
-                                ${entry.breakMinutes} min
-                            </div>
-
-
-                            <div class="report-table-cell">
-
-                                <strong>
-                                    ${entry.hours.toFixed(2)}
-                                </strong>
-
-                            </div>
-
-
-                            <div class="report-table-cell">
-
-                                ${entry.evidenceUrl
-                        ?
-                        `
-                                        <button
-                                            class="report-proof-thumbnail"
-                                            type="button"
-                                            data-view-entry="${entry.id}"
-                                        >
-
-                                            <img
-                                                src="${entry.evidenceUrl}"
-                                                alt="Evidence"
-                                            >
-
-                                        </button>
-                                        `
-                        :
-                        `
-                                        <span class="report-no-proof">
-                                            —
-                                        </span>
-                                        `
-                    }
-
-                            </div>
+                            <span class="report-task-description">
+                                ${escapeHTML(entry.description)}
+                            </span>
 
                         </div>
-                    `
-            )
-            .join('')
+
+                        <div class="report-table-cell">
+                            ${formatTime(entry.timeIn)}
+                        </div>
+
+                        <div class="report-table-cell">
+                            ${formatTime(entry.timeOut)}
+                        </div>
+
+                        <div class="report-table-cell">
+                            ${entry.breakMinutes} min
+                        </div>
+
+                        <div class="report-table-cell">
+
+                            <strong>
+                                ${entry.hours.toFixed(2)}
+                            </strong>
+
+                        </div>
+
+                        <div class="report-table-cell">
+
+                            ${entry.evidenceUrl
+                ?
+                `
+                                    <button
+                                        class="report-proof-thumbnail"
+                                        type="button"
+                                        data-view-entry="${entry.id}"
+                                    >
+
+                                        <img
+                                            src="${entry.evidenceUrl}"
+                                            alt="Evidence"
+                                        >
+
+                                    </button>
+                                    `
+                :
+                '—'
+            }
+
+                        </div>
+
+                    </div>
+                `
+    ).join('')
         }
     `;
+
 }
 
 
 
-// 
+// =====================================================
 // WEEKLY REPORT
-// 
+// =====================================================
 
 function renderWeeklyReport() {
 
-    if (
-        !$('weeklyReportTable')
-    ) {
+    if (!$('weeklyReportTable')) {
         return;
     }
 
 
     if (
+        $('weekDate') &&
         !$('weekDate').value
     ) {
 
@@ -5347,10 +6024,13 @@ function renderWeeklyReport() {
         report.entries.reduce(
             (
                 sum,
-                item
+                entry
             ) =>
                 sum +
-                item.hours,
+                Number(
+                    entry.hours ||
+                    0
+                ),
             0
         );
 
@@ -5360,7 +6040,8 @@ function renderWeeklyReport() {
 
 
     const average =
-        days
+        days >
+            0
             ?
             total /
             days
@@ -5376,29 +6057,57 @@ function renderWeeklyReport() {
         ).length;
 
 
-    $('weekRange').textContent =
-        `${formatDate(report.start)} – ${formatDate(report.end)}`;
+    if ($('weekRange')) {
+
+        $('weekRange').textContent =
+            `${formatDate(report.start)} – ${formatDate(report.end)}`;
+
+    }
 
 
-    $('weeklyTotalHours').textContent =
-        total.toFixed(2);
+    if ($('weeklyTotalHours')) {
+
+        $('weeklyTotalHours').textContent =
+            total.toFixed(
+                2
+            );
+
+    }
 
 
-    $('weeklyLoggedDays').textContent =
-        days;
+    if ($('weeklyLoggedDays')) {
+
+        $('weeklyLoggedDays').textContent =
+            days;
+
+    }
 
 
-    $('weeklyAverageHours').textContent =
-        average.toFixed(2);
+    if ($('weeklyAverageHours')) {
+
+        $('weeklyAverageHours').textContent =
+            average.toFixed(
+                2
+            );
+
+    }
 
 
-    $('weeklyAttendanceDays').textContent =
-        attendanceDays;
+    if ($('weeklyAttendanceDays')) {
+
+        $('weeklyAttendanceDays').textContent =
+            attendanceDays;
+
+    }
 
 
-    $('weeklyStudentName').textContent =
-        studentName ||
-        'Student';
+    if ($('weeklyStudentName')) {
+
+        $('weeklyStudentName').textContent =
+            studentName ||
+            'Student';
+
+    }
 
 
     const hasEntries =
@@ -5406,8 +6115,12 @@ function renderWeeklyReport() {
         0;
 
 
-    $('weeklyReportEmpty').hidden =
-        hasEntries;
+    if ($('weeklyReportEmpty')) {
+
+        $('weeklyReportEmpty').hidden =
+            hasEntries;
+
+    }
 
 
     $('weeklyReportTable').hidden =
@@ -5418,33 +6131,32 @@ function renderWeeklyReport() {
         createReportTable(
             report.entries
         );
+
 }
 
 
 
-// 
+// =====================================================
 // MONTHLY REPORT
-// 
+// =====================================================
 
 function renderMonthlyReport() {
 
-    if (
-        !$('monthlyReportTable')
-    ) {
+    if (!$('monthlyReportTable')) {
         return;
     }
 
 
     if (
+        $('reportMonth') &&
         !$('reportMonth').value
     ) {
 
         $('reportMonth').value =
-            localDate()
-                .slice(
-                    0,
-                    7
-                );
+            localDate().slice(
+                0,
+                7
+            );
 
     }
 
@@ -5457,10 +6169,13 @@ function renderMonthlyReport() {
         report.entries.reduce(
             (
                 sum,
-                item
+                entry
             ) =>
                 sum +
-                item.hours,
+                Number(
+                    entry.hours ||
+                    0
+                ),
             0
         );
 
@@ -5470,7 +6185,8 @@ function renderMonthlyReport() {
 
 
     const average =
-        days
+        days >
+            0
             ?
             total /
             days
@@ -5492,38 +6208,66 @@ function renderMonthlyReport() {
         );
 
 
-    $('monthlyPeriodLabel').textContent =
-        monthDate.toLocaleDateString(
-            undefined,
-            {
-                month:
-                    'long',
+    if ($('monthlyPeriodLabel')) {
 
-                year:
-                    'numeric'
-            }
-        );
+        $('monthlyPeriodLabel').textContent =
+            monthDate.toLocaleDateString(
+                undefined,
+                {
+                    month:
+                        'long',
 
+                    year:
+                        'numeric'
+                }
+            );
 
-    $('monthlyTotalHours').textContent =
-        total.toFixed(2);
-
-
-    $('monthlyLoggedDays').textContent =
-        days;
+    }
 
 
-    $('monthlyAverageHours').textContent =
-        average.toFixed(2);
+    if ($('monthlyTotalHours')) {
+
+        $('monthlyTotalHours').textContent =
+            total.toFixed(
+                2
+            );
+
+    }
 
 
-    $('monthlyAttendanceDays').textContent =
-        attendanceDays;
+    if ($('monthlyLoggedDays')) {
+
+        $('monthlyLoggedDays').textContent =
+            days;
+
+    }
 
 
-    $('monthlyStudentName').textContent =
-        studentName ||
-        'Student';
+    if ($('monthlyAverageHours')) {
+
+        $('monthlyAverageHours').textContent =
+            average.toFixed(
+                2
+            );
+
+    }
+
+
+    if ($('monthlyAttendanceDays')) {
+
+        $('monthlyAttendanceDays').textContent =
+            attendanceDays;
+
+    }
+
+
+    if ($('monthlyStudentName')) {
+
+        $('monthlyStudentName').textContent =
+            studentName ||
+            'Student';
+
+    }
 
 
     const overall =
@@ -5533,13 +6277,17 @@ function renderMonthlyReport() {
                 entry
             ) =>
                 sum +
-                entry.hours,
+                Number(
+                    entry.hours ||
+                    0
+                ),
             0
         );
 
 
-    const percentage =
-        goal > 0
+    const progress =
+        goal >
+            0
             ?
             Math.min(
                 100,
@@ -5551,16 +6299,28 @@ function renderMonthlyReport() {
             0;
 
 
-    $('monthlyProgressText').textContent =
-        `${overall.toFixed(2)} of ${goal} hours`;
+    if ($('monthlyProgressText')) {
+
+        $('monthlyProgressText').textContent =
+            `${overall.toFixed(2)} of ${goal} hours`;
+
+    }
 
 
-    $('monthlyProgressPercent').textContent =
-        `${percentage.toFixed(1)}%`;
+    if ($('monthlyProgressPercent')) {
+
+        $('monthlyProgressPercent').textContent =
+            `${progress.toFixed(1)}%`;
+
+    }
 
 
-    $('monthlyProgressBar').value =
-        percentage;
+    if ($('monthlyProgressBar')) {
+
+        $('monthlyProgressBar').value =
+            progress;
+
+    }
 
 
     const hasEntries =
@@ -5568,8 +6328,12 @@ function renderMonthlyReport() {
         0;
 
 
-    $('monthlyReportEmpty').hidden =
-        hasEntries;
+    if ($('monthlyReportEmpty')) {
+
+        $('monthlyReportEmpty').hidden =
+            hasEntries;
+
+    }
 
 
     $('monthlyReportTable').hidden =
@@ -5580,6 +6344,7 @@ function renderMonthlyReport() {
         createReportTable(
             report.entries
         );
+
 }
 
 
@@ -5600,9 +6365,9 @@ $('reportMonth')
 
 
 
-// 
-// CSV EXPORT
-// 
+// =====================================================
+// CSV
+// =====================================================
 
 function downloadCSV(
     filename,
@@ -5619,7 +6384,7 @@ function downloadCSV(
             'Break Minutes',
             'Rendered Hours',
             'Description',
-            'Evidence'
+            'Photo Evidence'
         ],
 
         ...list.map(
@@ -5652,21 +6417,17 @@ function downloadCSV(
 
 
     const csv =
-        rows
-            .map(
-                row =>
-                    row
-                        .map(
-                            value =>
-                                `"${String(value ?? '')
-                                    .replaceAll(
-                                        '"',
-                                        '""'
-                                    )}"`
-                        )
-                        .join(',')
-            )
-            .join('\n');
+        rows.map(
+            row =>
+                row.map(
+                    value =>
+                        `"${safeString(value)
+                            .replaceAll(
+                                '"',
+                                '""'
+                            )}"`
+                ).join(',')
+        ).join('\n');
 
 
     downloadBlob(
@@ -5685,6 +6446,7 @@ function downloadCSV(
         filename
 
     );
+
 }
 
 
@@ -5699,8 +6461,11 @@ $('exportWeeklyCsv')
 
 
             downloadCSV(
+
                 `Over-Time-Weekly-${report.start}.csv`,
+
                 report.entries
+
             );
 
         }
@@ -5718,8 +6483,11 @@ $('exportMonthlyCsv')
 
 
             downloadCSV(
+
                 `Over-Time-${report.month}.csv`,
+
                 report.entries
+
             );
 
         }
@@ -5727,9 +6495,9 @@ $('exportMonthlyCsv')
 
 
 
-// 
+// =====================================================
 // WORD EXPORT
-// 
+// =====================================================
 
 $('exportWordButton')
     ?.addEventListener(
@@ -5740,66 +6508,58 @@ $('exportWordButton')
                 getWeeklyReportData();
 
 
-            const total =
-                report.entries.reduce(
-                    (
-                        sum,
-                        item
-                    ) =>
-                        sum +
-                        item.hours,
-                    0
-                );
-
-
             const rows =
-                report.entries
-                    .map(
-                        entry => `
-                            <tr>
+                report.entries.map(
+                    entry => `
+                        <tr>
 
-                                <td>
-                                    ${escapeHTML(formatShortDate(entry.date))}
-                                </td>
+                            <td>
+                                ${escapeHTML(formatShortDate(entry.date))}
+                            </td>
 
-                                <td>
-                                    <strong>
-                                        ${escapeHTML(entry.task)}
-                                    </strong>
+                            <td>
 
-                                    <br>
+                                <strong>
+                                    ${escapeHTML(entry.task)}
+                                </strong>
 
-                                    ${escapeHTML(entry.description)}
-                                </td>
+                                <br>
 
-                                <td>
-                                    ${escapeHTML(formatTime(entry.timeIn))}
-                                </td>
+                                ${escapeHTML(entry.description)}
 
-                                <td>
-                                    ${escapeHTML(formatTime(entry.timeOut))}
-                                </td>
+                            </td>
 
-                                <td>
-                                    ${entry.breakMinutes} min
-                                </td>
+                            <td>
+                                ${escapeHTML(formatTime(entry.timeIn))}
+                            </td>
 
-                                <td>
-                                    ${entry.hours.toFixed(2)}
-                                </td>
+                            <td>
+                                ${escapeHTML(formatTime(entry.timeOut))}
+                            </td>
 
-                            </tr>
-                        `
-                    )
-                    .join('');
+                            <td>
+                                ${entry.breakMinutes} min
+                            </td>
+
+                            <td>
+                                ${entry.hours.toFixed(2)}
+                            </td>
+
+                        </tr>
+                    `
+                ).join('');
 
 
             const html =
                 `
+                <!DOCTYPE html>
+
                 <html>
 
                 <head>
+
                     <meta charset="UTF-8">
+
                 </head>
 
                 <body>
@@ -5816,19 +6576,14 @@ $('exportWordButton')
                     <p>
                         <strong>Period:</strong>
                         ${escapeHTML(formatDate(report.start))}
-                        -
+                        –
                         ${escapeHTML(formatDate(report.end))}
-                    </p>
-
-                    <p>
-                        <strong>Total:</strong>
-                        ${total.toFixed(2)} hours
                     </p>
 
                     <table
                         border="1"
-                        cellspacing="0"
                         cellpadding="6"
+                        cellspacing="0"
                         width="100%"
                     >
 
@@ -5848,7 +6603,9 @@ $('exportWordButton')
                         </thead>
 
                         <tbody>
+
                             ${rows}
+
                         </tbody>
 
                     </table>
@@ -5878,17 +6635,13 @@ $('exportWordButton')
 
 
 
-// 
-// PRINT / PDF
-// 
+// =====================================================
+// PRINT
+// =====================================================
 
-function createPrintableTable(
-    list
-) {
+function createPrintableTable(list) {
 
-    if (
-        !list.length
-    ) {
+    if (!list.length) {
 
         return `
             <p>
@@ -5919,55 +6672,52 @@ function createPrintableTable(
 
             <tbody>
 
-                ${list
-            .map(
-                entry => `
-                                <tr>
+                ${list.map(
+        entry => `
+                            <tr>
 
-                                    <td>
-                                        ${escapeHTML(formatShortDate(entry.date))}
-                                    </td>
+                                <td>
+                                    ${escapeHTML(formatShortDate(entry.date))}
+                                </td>
 
-                                    <td>
+                                <td>
 
-                                        <strong>
-                                            ${escapeHTML(entry.task)}
-                                        </strong>
+                                    <strong>
+                                        ${escapeHTML(entry.task)}
+                                    </strong>
 
-                                        <br>
+                                    <br>
 
-                                        <small>
-                                            ${escapeHTML(entry.description)}
-                                        </small>
+                                    ${escapeHTML(entry.description)}
 
-                                    </td>
+                                </td>
 
-                                    <td>
-                                        ${escapeHTML(formatTime(entry.timeIn))}
-                                    </td>
+                                <td>
+                                    ${escapeHTML(formatTime(entry.timeIn))}
+                                </td>
 
-                                    <td>
-                                        ${escapeHTML(formatTime(entry.timeOut))}
-                                    </td>
+                                <td>
+                                    ${escapeHTML(formatTime(entry.timeOut))}
+                                </td>
 
-                                    <td>
-                                        ${entry.breakMinutes} min
-                                    </td>
+                                <td>
+                                    ${entry.breakMinutes} min
+                                </td>
 
-                                    <td>
-                                        ${entry.hours.toFixed(2)}
-                                    </td>
+                                <td>
+                                    ${entry.hours.toFixed(2)}
+                                </td>
 
-                                </tr>
-                            `
-            )
-            .join('')
+                            </tr>
+                        `
+    ).join('')
         }
 
             </tbody>
 
         </table>
     `;
+
 }
 
 
@@ -5992,6 +6742,7 @@ function printReport(
         );
 
         return;
+
     }
 
 
@@ -6002,7 +6753,10 @@ function printReport(
                 item
             ) =>
                 sum +
-                item.hours,
+                Number(
+                    item.hours ||
+                    0
+                ),
             0
         );
 
@@ -6063,11 +6817,11 @@ function printReport(
                         1px solid
                         #ccc;
 
-                    vertical-align:
-                        top;
-
                     text-align:
                         left;
+
+                    vertical-align:
+                        top;
 
                     font-size:
                         10px;
@@ -6097,13 +6851,24 @@ function printReport(
             </p>
 
             <p>
-                <strong>Student:</strong>
+
+                <strong>
+                    Student:
+                </strong>
+
                 ${escapeHTML(studentName)}
+
             </p>
 
             <p>
-                <strong>Total Rendered:</strong>
-                ${total.toFixed(2)} hours
+
+                <strong>
+                    Total Rendered:
+                </strong>
+
+                ${total.toFixed(2)}
+                hours
+
             </p>
 
             ${createPrintableTable(list)}
@@ -6118,17 +6883,17 @@ function printReport(
     popup.document.close();
 
 
-    popup.focus();
-
-
     setTimeout(
         () => {
+
+            popup.focus();
 
             popup.print();
 
         },
         300
     );
+
 }
 
 
@@ -6172,7 +6937,7 @@ $('printMonthlyButton')
                 );
 
 
-            const monthLabel =
+            const label =
                 date.toLocaleDateString(
                     undefined,
                     {
@@ -6189,7 +6954,7 @@ $('printMonthlyButton')
 
                 'Monthly OJT Accomplishment Report',
 
-                monthLabel,
+                label,
 
                 report.entries
 
@@ -6200,9 +6965,9 @@ $('printMonthlyButton')
 
 
 
-// 
+// =====================================================
 // DOWNLOAD
-// 
+// =====================================================
 
 function downloadBlob(
     blob,
@@ -6215,29 +6980,29 @@ function downloadBlob(
         );
 
 
-    const link =
+    const anchor =
         document.createElement(
             'a'
         );
 
 
-    link.href =
+    anchor.href =
         url;
 
 
-    link.download =
+    anchor.download =
         filename;
 
 
     document.body.appendChild(
-        link
+        anchor
     );
 
 
-    link.click();
+    anchor.click();
 
 
-    link.remove();
+    anchor.remove();
 
 
     setTimeout(
@@ -6250,42 +7015,44 @@ function downloadBlob(
         },
         1000
     );
+
 }
 
 
 
-// 
-// ONLINE STATUS
-// 
+// =====================================================
+// CONNECTION STATUS
+// =====================================================
 
 function updateConnectionStatus() {
-
-    if (
-        !$('connectionText') ||
-        !$('connectionStatus')
-    ) {
-        return;
-    }
-
 
     const online =
         navigator.onLine;
 
 
-    $('connectionText').textContent =
-        online
-            ?
-            'Online'
-            :
-            'Offline';
+    if ($('connectionText')) {
+
+        $('connectionText').textContent =
+            online
+                ?
+                'Online'
+                :
+                'Offline';
+
+    }
 
 
-    $('connectionStatus')
-        .classList
-        .toggle(
-            'offline',
-            !online
-        );
+    if ($('connectionStatus')) {
+
+        $('connectionStatus')
+            .classList
+            .toggle(
+                'offline',
+                !online
+            );
+
+    }
+
 }
 
 
@@ -6297,9 +7064,7 @@ window.addEventListener(
         updateConnectionStatus();
 
 
-        if (
-            currentUser
-        ) {
+        if (currentUser) {
 
             await refreshCloudData();
 
@@ -6316,44 +7081,6 @@ window.addEventListener(
 );
 
 
-
-// 
-// REFRESH CLOUD DATA
-// 
-
-async function refreshCloudData() {
-
-    if (
-        !currentUser
-    ) {
-        return;
-    }
-
-
-    try {
-
-        await loadProfile();
-
-        await loadAttendance();
-
-        await loadEntries();
-
-
-        render();
-
-    } catch (error) {
-
-        console.error(
-            'Refresh error:',
-            error
-        );
-
-    }
-}
-
-
-
-// Refresh when returning from another tab/device.
 
 window.addEventListener(
     'focus',
@@ -6373,17 +7100,72 @@ window.addEventListener(
 
 
 
-// 
+// =====================================================
+// CLOUD REFRESH
+// =====================================================
+
+async function refreshCloudData() {
+
+    if (
+        !currentUser?.id ||
+        appOpening
+    ) {
+
+        return;
+
+    }
+
+
+    try {
+
+        await loadProfile();
+
+        await loadAttendance();
+
+        await loadEntries();
+
+
+        render();
+
+    } catch (error) {
+
+        console.error(
+            'Cloud refresh error:',
+            error
+        );
+
+    }
+
+}
+
+
+
+// =====================================================
 // REMINDER
-// 
+// =====================================================
 
 function checkReminder() {
 
     if (
-        !settings.reminderEnabled ||
-        reminderAlreadyShown
+        !settings.reminderEnabled
     ) {
+
         return;
+
+    }
+
+
+    const today =
+        localDate();
+
+
+    if (
+        reminderShownDate ===
+        today
+    ) {
+
+        return;
+
     }
 
 
@@ -6391,7 +7173,7 @@ function checkReminder() {
         attendances.find(
             item =>
                 item.date ===
-                localDate()
+                today
         );
 
 
@@ -6399,7 +7181,9 @@ function checkReminder() {
         !attendance?.timeIn ||
         attendance.timeOut
     ) {
+
         return;
+
     }
 
 
@@ -6408,8 +7192,8 @@ function checkReminder() {
         settings.reminderTime
     ) {
 
-        reminderAlreadyShown =
-            true;
+        reminderShownDate =
+            today;
 
 
         toast(
@@ -6417,6 +7201,7 @@ function checkReminder() {
         );
 
     }
+
 }
 
 
@@ -6428,9 +7213,9 @@ setInterval(
 
 
 
-// 
+// =====================================================
 // PWA INSTALL
-// 
+// =====================================================
 
 window.addEventListener(
     'beforeinstallprompt',
@@ -6470,38 +7255,61 @@ async function installApp() {
     ) {
 
         toast(
-            'Install is not available yet.'
+            'Install option is not currently available.'
         );
 
         return;
-    }
-
-
-    deferredInstallPrompt.prompt();
-
-
-    await deferredInstallPrompt
-        .userChoice;
-
-
-    deferredInstallPrompt =
-        null;
-
-
-    if ($('installAppButton')) {
-
-        $('installAppButton').hidden =
-            true;
 
     }
 
 
-    if ($('settingsInstallButton')) {
+    try {
 
-        $('settingsInstallButton').hidden =
-            true;
+        deferredInstallPrompt
+            .prompt();
+
+
+        const choice =
+            await deferredInstallPrompt
+                .userChoice;
+
+
+        console.log(
+            'PWA install:',
+            choice?.outcome ||
+            'unknown'
+        );
+
+    } catch (error) {
+
+        console.warn(
+            'Install prompt error:',
+            error
+        );
+
+    } finally {
+
+        deferredInstallPrompt =
+            null;
+
+
+        if ($('installAppButton')) {
+
+            $('installAppButton').hidden =
+                true;
+
+        }
+
+
+        if ($('settingsInstallButton')) {
+
+            $('settingsInstallButton').hidden =
+                true;
+
+        }
 
     }
+
 }
 
 
@@ -6522,15 +7330,57 @@ $('settingsInstallButton')
 
 
 
-// 
+// =====================================================
+// SERVICE WORKER
+// =====================================================
+
+if (
+    'serviceWorker' in
+    navigator
+) {
+
+    window.addEventListener(
+        'load',
+        async () => {
+
+            try {
+
+                const registration =
+                    await navigator
+                        .serviceWorker
+                        .register(
+                            '/service-worker.js'
+                        );
+
+
+                console.log(
+                    'Service Worker registered:',
+                    registration.scope
+                );
+
+            } catch (error) {
+
+                console.error(
+                    'Service Worker error:',
+                    error
+                );
+
+            }
+
+        }
+    );
+
+}
+
+
+
+// =====================================================
 // TODAY
-// 
+// =====================================================
 
 function renderToday() {
 
-    if (
-        !$('today')
-    ) {
+    if (!$('today')) {
         return;
     }
 
@@ -6550,13 +7400,14 @@ function renderToday() {
                         'numeric'
                 }
             );
+
 }
 
 
 
-// 
+// =====================================================
 // MAIN RENDER
-// 
+// =====================================================
 
 function render() {
 
@@ -6577,18 +7428,14 @@ function render() {
     renderMonthlyReport();
 
     createIcons();
+
 }
 
 
 
-// 
-// AUTH STATE
-//
-// IMPORTANT:
-// Do NOT call openApp() again from SIGNED_IN here.
-// loginUser() and checkAuth() already handle it.
-// This avoids double loading / stuck sign-in.
-// 
+// =====================================================
+// AUTH STATE LISTENER
+// =====================================================
 
 supabaseClient.auth
     .onAuthStateChange(
@@ -6602,6 +7449,14 @@ supabaseClient.auth
                 event
             );
 
+
+            /*
+             * IMPORTANT:
+             * We do NOT open the app again on SIGNED_IN.
+             *
+             * loginUser() and checkAuth() already do that.
+             * This prevents duplicate loading and auth loops.
+             */
 
             if (
                 event ===
@@ -6637,19 +7492,30 @@ supabaseClient.auth
 
             }
 
+
+            if (
+                event ===
+                'TOKEN_REFRESHED' &&
+                session?.user
+            ) {
+
+                currentUser =
+                    session.user;
+
+            }
+
         }
     );
 
 
 
-// 
+// =====================================================
 // INITIALIZE
-// 
+// =====================================================
 
 async function initialize() {
 
     renderToday();
-
 
     updateConnectionStatus();
 
@@ -6665,11 +7531,10 @@ async function initialize() {
     if ($('reportMonth')) {
 
         $('reportMonth').value =
-            localDate()
-                .slice(
-                    0,
-                    7
-                );
+            localDate().slice(
+                0,
+                7
+            );
 
     }
 
@@ -6681,7 +7546,7 @@ async function initialize() {
     } catch (error) {
 
         console.error(
-            'Initialize error:',
+            'Initialization error:',
             error
         );
 
@@ -6689,6 +7554,7 @@ async function initialize() {
 
 
     createIcons();
+
 }
 
 

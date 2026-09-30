@@ -2899,3 +2899,137 @@ footer {
   font-size: 18px;
   font-weight: 800;
 }
+
+/* =====================================================
+   CUSTOM LOGOUT DIALOG
+===================================================== */
+
+.confirm-dialog {
+  width: min(420px, calc(100% - 32px));
+
+  padding: 0;
+
+  border: none;
+  border-radius: 18px;
+
+  background: transparent;
+
+  overflow: visible;
+}
+
+
+.confirm-dialog::backdrop {
+  background: rgba(15, 15, 15, 0.45);
+
+  backdrop-filter: blur(5px);
+}
+
+
+.confirm-dialog-card {
+  padding: 26px;
+
+  background: var(--surface);
+
+  border: 1px solid var(--line);
+  border-radius: 18px;
+
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, 0.18);
+}
+
+
+.confirm-dialog-icon {
+  width: 46px;
+  height: 46px;
+
+  display: grid;
+  place-items: center;
+
+  margin-bottom: 18px;
+
+  border-radius: 13px;
+
+  background: #fff0eb;
+
+  color: var(--orange);
+}
+
+
+.confirm-dialog-icon svg {
+  width: 21px;
+  height: 21px;
+}
+
+
+.confirm-dialog-content .eyebrow {
+  margin-bottom: 6px;
+}
+
+
+.confirm-dialog-content h2 {
+  margin:
+    0 0 8px;
+
+  font-size: 24px;
+  line-height: 1.15;
+}
+
+
+.confirm-dialog-content p:last-child {
+  margin: 0;
+
+  color: var(--muted);
+
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+
+.confirm-dialog-actions {
+  margin-top: 24px;
+
+  display: grid;
+
+  grid-template-columns:
+    1fr 1fr;
+
+  gap: 10px;
+}
+
+
+.confirm-dialog-actions .button {
+  width: 100%;
+
+  justify-content: center;
+}
+
+
+.danger-button {
+  background: #ef4444;
+
+  color: #fff;
+
+  border: 1px solid #ef4444;
+}
+
+
+.danger-button:hover {
+  background: #dc2626;
+
+  border-color: #dc2626;
+}
+
+
+@media (max-width: 480px) {
+
+  .confirm-dialog-card {
+    padding: 22px;
+  }
+
+
+  .confirm-dialog-actions {
+    grid-template-columns:
+      1fr;
+  }
+
+}

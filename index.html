@@ -224,16 +224,12 @@
 
         <aside class="sidebar" id="sidebar">
 
-            <div class="brand">
+            <div class="auth-brand">
+                <img src="/icons/icon-192.png" alt="Over-Time logo">
 
-                <span class="brand-mark">
-                    ot
+                <span>
+                    Over-Time
                 </span>
-
-                <span class="brand-name">
-                    over<span>time</span>
-                </span>
-
             </div>
 
 
@@ -1938,7 +1934,44 @@
 
     <div class="toast" id="toast"></div>
 
+    <dialog id="logoutDialog" class="confirm-dialog">
 
+        <div class="confirm-dialog-card">
+
+
+
+            <div class="confirm-dialog-content">
+
+                <p class="eyebrow accent">
+                    SIGN OUT
+                </p>
+
+                <h2>
+                    Leave Over-Time?
+                </h2>
+
+                <p>
+                    You’ll need to sign in again to continue tracking your OJT progress.
+                </p>
+
+            </div>
+
+            <div class="confirm-dialog-actions">
+
+                <button type="button" class="button secondary" id="cancelLogoutButton">
+                    Cancel
+                </button>
+
+                <button type="button" class="button danger-button" id="confirmLogoutButton">
+                    <i data-lucide="log-out"></i>
+                    Sign Out
+                </button>
+
+            </div>
+
+        </div>
+
+    </dialog>
 </body>
 
 </html>
