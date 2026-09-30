@@ -1,48 +1,59 @@
-'use strict';
+// 
+// SUPABASE CONFIG
+// 
 
-const $ = id => document.getElementById(id);
+const SUPABASE_URL =
+    'https://gpswmjqsrrsnoxpjzbcj.supabase.co';
 
-
-/* =====================================================
-   DATABASE
-===================================================== */
-
-const DB_NAME = 'overtime-pwa-v3';
-const STORE_NAME = 'tracker';
-const RECORD_KEY = 'current';
-
-let dbPromise;
+const SUPABASE_KEY =
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdwc3dtanFzcnJzbm94cGp6YmNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3Mzg5MTYsImV4cCI6MjEwNjMxNDkxNn0.HZBarYW20s4Thk5mP3CS6NvdNhrgS1nrb0_S_YXVYbU';
 
 
-/* =====================================================
-   STATE
-===================================================== */
+const supabaseClient =
+    supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_KEY
+    );
+
+
+
+// 
+// GLOBAL STATE
+// 
+
+let currentUser = null;
 
 let entries = [];
 let attendances = [];
 
-let goal = 486;
 let studentName = '';
+let goal = 468;
 
 let editingId = null;
 
-let entryDraft = null;
+let selectedEvidenceFile = null;
+let selectedEvidencePreviewURL = null;
+
+let existingEvidencePath = null;
+let existingEvidenceUrl = null;
+
+let calendarDate = new Date();
 
 let entriesCurrentPage = 1;
 let entriesPageSize = 10;
 
-let calendarDate = new Date();
-
 let deferredInstallPrompt = null;
 
-let toastTimer;
+let toastTimer = null;
 
 let reminderAlreadyShown = false;
 
+let appOpening = false;
 
-/* SETTINGS */
 
 let settings = {
+
+    darkMode: false,
 
     autoBreakEnabled: true,
 
@@ -52,215 +63,63 @@ let settings = {
 
     reminderEnabled: false,
 
-    reminderTime: '17:00',
+    reminderTime: '17:00'
 
-    darkMode: false
 };
 
 
-/* =====================================================
-   INDEXED DB
-===================================================== */
 
-function openDatabase() {
+// 
+// BASIC HELPERS
+// 
 
-    if (!('indexedDB' in window)) {
+const $ = id =>
+    document.getElementById(id);
 
-        return Promise.reject(
-            Error('IndexedDB is not supported.')
-        );
 
-    }
 
+function localDate(
+    date = new Date()
+) {
 
-    if (!dbPromise) {
+    const year =
+        date.getFullYear();
 
-        dbPromise = new Promise((resolve, reject) => {
+    const month =
+        String(
+            date.getMonth() + 1
+        ).padStart(2, '0');
 
-            const request =
-                indexedDB.open(DB_NAME, 1);
+    const day =
+        String(
+            date.getDate()
+        ).padStart(2, '0');
 
 
-            request.onupgradeneeded = () => {
-
-                if (
-                    !request.result.objectStoreNames
-                        .contains(STORE_NAME)
-                ) {
-
-                    request.result
-                        .createObjectStore(STORE_NAME);
-
-                }
-
-            };
-
-
-            request.onsuccess =
-                () => resolve(request.result);
-
-
-            request.onerror =
-                () => reject(request.error);
-
-        });
-
-    }
-
-
-    return dbPromise;
-}
-
-
-
-async function loadData() {
-
-    const db =
-        await openDatabase();
-
-
-    return new Promise((resolve, reject) => {
-
-        const request =
-            db.transaction(
-                STORE_NAME,
-                'readonly'
-            )
-                .objectStore(STORE_NAME)
-                .get(RECORD_KEY);
-
-
-        request.onsuccess =
-            () => resolve(request.result);
-
-
-        request.onerror =
-            () => reject(request.error);
-
-    });
-
-}
-
-
-
-async function saveData() {
-
-    const db =
-        await openDatabase();
-
-
-    const state = {
-
-        entries,
-
-        attendances,
-
-        goal,
-
-        studentName,
-
-        settings,
-
-        entryDraft
-    };
-
-
-    await new Promise((resolve, reject) => {
-
-        const transaction =
-            db.transaction(
-                STORE_NAME,
-                'readwrite'
-            );
-
-
-        transaction
-            .objectStore(STORE_NAME)
-            .put(
-                state,
-                RECORD_KEY
-            );
-
-
-        transaction.oncomplete = resolve;
-
-
-        transaction.onerror =
-            () => reject(transaction.error);
-
-    });
-
-}
-
-
-/* =====================================================
-   HELPERS
-===================================================== */
-
-function escapeHTML(value) {
-
-    return String(value ?? '')
-        .replace(
-            /[&<>"']/g,
-            character => ({
-                '&': '&amp;',
-                '<': '&lt;',
-                '>': '&gt;',
-                '"': '&quot;',
-                "'": '&#39;'
-            })[character]
-        );
-
-}
-
-
-
-function xml(value) {
-
-    return escapeHTML(value)
-        .replace(/\r/g, '');
-
-}
-
-
-
-function localDate(date = new Date()) {
-
-    return [
-        date.getFullYear(),
-        String(date.getMonth() + 1)
-            .padStart(2, '0'),
-        String(date.getDate())
-            .padStart(2, '0')
-    ].join('-');
-
+    return `${year}-${month}-${day}`;
 }
 
 
 
 function currentTime() {
 
-    const date = new Date();
-
-    return [
-        String(date.getHours())
-            .padStart(2, '0'),
-        String(date.getMinutes())
-            .padStart(2, '0')
-    ].join(':');
-
-}
+    const now =
+        new Date();
 
 
+    const hour =
+        String(
+            now.getHours()
+        ).padStart(2, '0');
 
-function currentMonth() {
 
-    const date = new Date();
+    const minute =
+        String(
+            now.getMinutes()
+        ).padStart(2, '0');
 
-    return `${date.getFullYear()}-${String(
-        date.getMonth() + 1
-    ).padStart(2, '0')}`;
 
+    return `${hour}:${minute}`;
 }
 
 
@@ -272,733 +131,1473 @@ function formatDate(value) {
     }
 
 
-    return new Date(
-        `${value}T12:00:00`
-    )
-        .toLocaleDateString(
-            'en-PH',
-            {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric'
-            }
+    const date =
+        new Date(
+            `${value}T00:00:00`
         );
 
+
+    return date.toLocaleDateString(
+        undefined,
+        {
+            weekday: 'short',
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric'
+        }
+    );
 }
 
 
 
-function formatLongDate(value) {
+function formatShortDate(value) {
 
     if (!value) {
         return '—';
     }
 
 
-    return new Date(
-        `${value}T12:00:00`
-    )
-        .toLocaleDateString(
-            'en-PH',
-            {
-                weekday: 'long',
-                month: 'long',
-                day: 'numeric',
-                year: 'numeric'
-            }
+    const date =
+        new Date(
+            `${value}T00:00:00`
         );
 
+
+    return date.toLocaleDateString(
+        undefined,
+        {
+            month: 'short',
+            day: 'numeric'
+        }
+    );
 }
 
 
 
-function formatClockTime(time) {
+function formatTime(value) {
 
-    if (!time) {
+    if (!value) {
         return '—';
     }
 
 
-    const [hour, minute] =
-        time.split(':').map(Number);
+    const parts =
+        value.split(':');
 
 
-    return new Date(
-        2000,
-        0,
-        1,
+    const hour =
+        Number(parts[0]);
+
+    const minute =
+        Number(parts[1]);
+
+
+    const date =
+        new Date();
+
+
+    date.setHours(
         hour,
-        minute
-    )
-        .toLocaleTimeString(
-            'en-PH',
-            {
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true
-            }
-        );
+        minute,
+        0,
+        0
+    );
 
+
+    return date.toLocaleTimeString(
+        [],
+        {
+            hour: 'numeric',
+            minute: '2-digit'
+        }
+    );
 }
 
 
 
-function fmt(value) {
+function escapeHTML(
+    value = ''
+) {
 
-    return Number(
-        Number(value).toFixed(2)
-    ).toString();
-
+    return String(value)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
 }
 
 
 
 function toast(message) {
 
-    $('toast').textContent = message;
-
-    $('toast')
-        .classList
-        .add('show');
+    const element =
+        $('toast');
 
 
-    clearTimeout(toastTimer);
+    if (!element) {
+        return;
+    }
+
+
+    element.textContent =
+        message;
+
+
+    element.classList.add(
+        'show'
+    );
+
+
+    clearTimeout(
+        toastTimer
+    );
 
 
     toastTimer =
         setTimeout(
             () => {
 
-                $('toast')
-                    .classList
-                    .remove('show');
+                element.classList.remove(
+                    'show'
+                );
 
             },
-            3000
+            2600
         );
-
 }
 
 
 
-function refreshIcons() {
+function createIcons() {
 
-    if (window.lucide) {
+    if (
+        window.lucide
+    ) {
 
-        window.lucide.createIcons();
+        lucide.createIcons();
 
     }
-
 }
 
 
-/* =====================================================
-   INITIALIZATION
-===================================================== */
 
-async function initialize() {
+// 
+// LOGIN / SIGNUP VIEW
+// 
+
+function showLogin() {
+
+    if ($('loginView')) {
+        $('loginView').hidden = false;
+    }
+
+
+    if ($('signupView')) {
+        $('signupView').hidden = true;
+    }
+
+
+    if ($('loginError')) {
+        $('loginError').textContent = '';
+    }
+
+
+    if ($('signupError')) {
+        $('signupError').textContent = '';
+    }
+}
+
+
+
+function showSignup() {
+
+    if ($('loginView')) {
+        $('loginView').hidden = true;
+    }
+
+
+    if ($('signupView')) {
+        $('signupView').hidden = false;
+    }
+
+
+    if ($('loginError')) {
+        $('loginError').textContent = '';
+    }
+
+
+    if ($('signupError')) {
+        $('signupError').textContent = '';
+    }
+}
+
+
+
+$('showSignup')
+    ?.addEventListener(
+        'click',
+        showSignup
+    );
+
+
+
+$('showLogin')
+    ?.addEventListener(
+        'click',
+        showLogin
+    );
+
+
+
+// 
+// SIGN UP
+// 
+
+async function signUpUser() {
+
+    const name =
+        $('signupName')
+            .value
+            .trim();
+
+
+    const email =
+        $('signupEmail')
+            .value
+            .trim();
+
+
+    const password =
+        $('signupPassword')
+            .value;
+
+
+    const confirmation =
+        $('signupConfirmPassword')
+            .value;
+
+
+    $('signupError').textContent =
+        '';
+
+
+    if (!name) {
+
+        $('signupError').textContent =
+            'Enter your name.';
+
+        return;
+    }
+
+
+    if (!email) {
+
+        $('signupError').textContent =
+            'Enter your email.';
+
+        return;
+    }
+
+
+    if (
+        password.length <
+        6
+    ) {
+
+        $('signupError').textContent =
+            'Password must be at least 6 characters.';
+
+        return;
+    }
+
+
+    if (
+        password !==
+        confirmation
+    ) {
+
+        $('signupError').textContent =
+            'Passwords do not match.';
+
+        return;
+    }
+
+
+    $('signupButton').disabled =
+        true;
+
+
+    $('signupButton').textContent =
+        'Creating account...';
+
 
     try {
 
-        const stored =
-            await loadData();
+        const {
+            data,
+            error
+        } =
+            await supabaseClient.auth
+                .signUp({
+
+                    email,
+                    password,
+
+                    options: {
+
+                        emailRedirectTo:
+                            window.location.origin,
+
+                        data: {
+
+                            full_name:
+                                name
+
+                        }
+
+                    }
+
+                });
 
 
-        entries =
-            Array.isArray(stored?.entries)
-                ? stored.entries
-                : [];
+        if (error) {
+            throw error;
+        }
 
 
-        attendances =
-            Array.isArray(stored?.attendances)
-                ? stored.attendances
-                : [];
+        if (
+            data.user &&
+            data.session
+        ) {
+
+            await createProfile(
+                data.user,
+                name
+            );
 
 
-        goal =
-            Number(stored?.goal) > 0
-                ? Number(stored.goal)
-                : 468;
+            await openApp(
+                data.user
+            );
 
 
-        studentName =
-            typeof stored?.studentName === 'string'
-                ? stored.studentName
-                : '';
+            return;
+        }
 
 
-        settings = {
-
-            ...settings,
-
-            ...(stored?.settings || {})
-        };
-
-
-        entryDraft =
-            stored?.entryDraft || null;
-
-
-        $('weekDate').value =
-            localDate();
-
-
-        $('reportMonth').value =
-            currentMonth();
-
-
-        $('attendanceMonthFilter').value =
-            currentMonth();
-
-
-        updateStudentInfo();
-
-        updateSettingsForm();
-
-        applyDarkMode();
-
-        render();
-
-        updateConnectionStatus();
-
-        registerPWA();
-
-        checkReminder();
-
-
-        setInterval(
-            checkReminder,
-            60000
-        );
-
-
-        refreshIcons();
+        $('signupError').textContent =
+            'Account created. Check your email and confirm your account before signing in.';
 
     } catch (error) {
 
-        console.error(error);
-
-        toast(
-            'Could not open local data.'
+        console.error(
+            'Signup error:',
+            error
         );
 
+
+        $('signupError').textContent =
+            error.message ||
+            'Unable to create account.';
+
+    } finally {
+
+        $('signupButton').disabled =
+            false;
+
+
+        $('signupButton').textContent =
+            'Create Account';
+
+    }
+}
+
+
+
+$('signupButton')
+    ?.addEventListener(
+        'click',
+        signUpUser
+    );
+
+
+
+// 
+// LOGIN
+// FIXED VERSION
+// 
+
+async function loginUser() {
+
+    if (
+        appOpening
+    ) {
+        return;
     }
 
+
+    const email =
+        $('loginEmail')
+            .value
+            .trim();
+
+
+    const password =
+        $('loginPassword')
+            .value;
+
+
+    $('loginError').textContent =
+        '';
+
+
+    if (
+        !email ||
+        !password
+    ) {
+
+        $('loginError').textContent =
+            'Enter your email and password.';
+
+        return;
+    }
+
+
+    const button =
+        $('loginButton');
+
+
+    button.disabled =
+        true;
+
+
+    button.textContent =
+        'Signing in...';
+
+
+    try {
+
+        const {
+            data,
+            error
+        } =
+            await supabaseClient.auth
+                .signInWithPassword({
+
+                    email,
+                    password
+
+                });
+
+
+        if (error) {
+            throw error;
+        }
+
+
+        if (
+            !data.user
+        ) {
+
+            throw new Error(
+                'Unable to load your account.'
+            );
+
+        }
+
+
+        await openApp(
+            data.user
+        );
+
+    } catch (error) {
+
+        console.error(
+            'Login error:',
+            error
+        );
+
+
+        $('loginError').textContent =
+            error.message ||
+            'Unable to sign in.';
+
+    } finally {
+
+        button.disabled =
+            false;
+
+
+        button.textContent =
+            'Sign In';
+
+    }
 }
 
 
-/* =====================================================
-   USER
-===================================================== */
 
-
-
-function updateStudentInfo() {
-
-    const name =
-        studentName || 'Student';
-
-    $('profileName').textContent =
-        name;
-
-    $('overviewName').textContent =
-        studentName
-            ? studentName.split(' ')[0]
-            : 'Student';
-
-    $('profileAvatar').textContent =
-        studentName
-            ? studentName
-                .split(/\s+/)
-                .filter(Boolean)
-                .map(item => item[0])
-                .slice(0, 2)
-                .join('')
-                .toUpperCase()
-            : 'S';
-
-    $('studentName').value =
-        studentName;
-
-    $('hoursGoal').value =
-        goal;
-}
-
-
-/* =====================================================
-   NAVIGATION
-===================================================== */
-
-function closeMenu() {
-
-    $('sidebar')
-        .classList
-        .remove('open');
-
-
-    $('backdrop').hidden = true;
-
-}
-
-
-
-$('menuButton')
-    .addEventListener(
+$('loginButton')
+    ?.addEventListener(
         'click',
-        () => {
-
-            const open =
-                $('sidebar')
-                    .classList
-                    .toggle('open');
+        loginUser
+    );
 
 
-            $('backdrop').hidden =
-                !open;
+
+$('loginPassword')
+    ?.addEventListener(
+        'keydown',
+        event => {
+
+            if (
+                event.key ===
+                'Enter'
+            ) {
+
+                loginUser();
+
+            }
 
         }
     );
 
 
-$('backdrop')
-    .addEventListener(
+
+// 
+// LOG OUT
+// 
+
+$('logoutButton')
+    ?.addEventListener(
         'click',
-        closeMenu
+        async () => {
+
+            const okay =
+                confirm(
+                    'Sign out of Over-Time?'
+                );
+
+
+            if (!okay) {
+                return;
+            }
+
+
+            try {
+
+                await supabaseClient.auth
+                    .signOut();
+
+            } catch (error) {
+
+                console.error(
+                    error
+                );
+
+            }
+
+
+            currentUser =
+                null;
+
+
+            entries =
+                [];
+
+
+            attendances =
+                [];
+
+
+            if ($('mainApp')) {
+                $('mainApp').hidden = true;
+            }
+
+
+            if ($('authScreen')) {
+                $('authScreen').hidden = false;
+            }
+
+
+            showLogin();
+
+        }
     );
 
 
 
-function switchPage(page) {
+// 
+// CHECK AUTH
+// 
 
-    const pages = {
+async function checkAuth() {
 
-        overview: 'Dashboard',
+    try {
 
-        calendar: 'Calendar',
-
-        attendance: 'Attendance',
-
-        entries: 'Daily Logs',
-
-        reports: 'Reports',
-
-        settings: 'Settings'
-    };
+        const {
+            data,
+            error
+        } =
+            await supabaseClient.auth
+                .getSession();
 
 
-    if (!pages[page]) {
+        if (error) {
+            throw error;
+        }
+
+
+        const session =
+            data.session;
+
+
+        if (
+            session?.user
+        ) {
+
+            await openApp(
+                session.user
+            );
+
+
+            return;
+        }
+
+
+        $('authScreen').hidden =
+            false;
+
+
+        $('mainApp').hidden =
+            true;
+
+    } catch (error) {
+
+        console.error(
+            'Auth check:',
+            error
+        );
+
+
+        $('authScreen').hidden =
+            false;
+
+
+        $('mainApp').hidden =
+            true;
+
+    }
+}
+
+
+
+// 
+// OPEN APP
+// FIXED TO PREVENT DOUBLE OPENING
+// 
+
+async function openApp(user) {
+
+    if (
+        appOpening
+    ) {
         return;
     }
 
 
-    document
-        .querySelectorAll('.page')
-        .forEach(element => {
-
-            element.classList.toggle(
-                'active',
-                element.id === page
-            );
-
-        });
+    appOpening =
+        true;
 
 
-    document
-        .querySelectorAll('.nav-link')
-        .forEach(element => {
+    try {
 
-            element.classList.toggle(
-                'active',
-                element.dataset.page === page
-            );
-
-        });
+        currentUser =
+            user;
 
 
-    $('pageTitle')
-        .textContent =
-        pages[page];
+        $('profileEmail').textContent =
+            user.email ||
+            '';
 
 
-    if (page === 'calendar') {
-        renderCalendar();
+        $('settingsEmail').textContent =
+            user.email ||
+            '';
+
+
+        /*
+         * Load sequentially instead of causing
+         * multiple auth/database calls to fight.
+         */
+
+        await loadProfile();
+
+        await loadAttendance();
+
+        await loadEntries();
+
+
+        $('authScreen').hidden =
+            true;
+
+
+        $('mainApp').hidden =
+            false;
+
+
+        render();
+
+
+        createIcons();
+
+    } catch (error) {
+
+        console.error(
+            'App startup error:',
+            error
+        );
+
+
+        currentUser =
+            null;
+
+
+        $('mainApp').hidden =
+            true;
+
+
+        $('authScreen').hidden =
+            false;
+
+
+        if ($('loginError')) {
+
+            $('loginError').textContent =
+                'Signed in, but the app could not load. Check the browser console.';
+
+        }
+
+    } finally {
+
+        appOpening =
+            false;
+
+    }
+}
+
+
+
+// 
+// PROFILE
+// 
+
+async function createProfile(
+    user,
+    name
+) {
+
+    const {
+        error
+    } =
+        await supabaseClient
+            .from('profiles')
+            .upsert({
+
+                id:
+                    user.id,
+
+                student_name:
+                    name,
+
+                required_hours:
+                    468,
+
+                dark_mode:
+                    false,
+
+                auto_break_enabled:
+                    true,
+
+                auto_break_threshold:
+                    9,
+
+                auto_break_minutes:
+                    60,
+
+                reminder_enabled:
+                    false,
+
+                reminder_time:
+                    '17:00'
+
+            });
+
+
+    if (error) {
+
+        console.error(
+            'Profile creation:',
+            error
+        );
+
+    }
+}
+
+
+
+async function loadProfile() {
+
+    if (!currentUser) {
+        return;
     }
 
 
-    if (page === 'attendance') {
-        renderAttendanceHistory();
+    const {
+        data,
+        error
+    } =
+        await supabaseClient
+            .from('profiles')
+            .select('*')
+            .eq(
+                'id',
+                currentUser.id
+            )
+            .maybeSingle();
+
+
+    if (error) {
+        throw error;
+    }
+
+
+    if (!data) {
+
+        const fallbackName =
+            currentUser
+                .user_metadata
+                ?.full_name ||
+            'Student';
+
+
+        await createProfile(
+            currentUser,
+            fallbackName
+        );
+
+
+        studentName =
+            fallbackName;
+
+
+        goal =
+            468;
+
+
+        settings = {
+
+            darkMode: false,
+
+            autoBreakEnabled: true,
+
+            autoBreakThreshold: 9,
+
+            autoBreakMinutes: 60,
+
+            reminderEnabled: false,
+
+            reminderTime: '17:00'
+
+        };
+
+
+        applyDarkMode();
+
+
+        return;
+    }
+
+
+    studentName =
+        data.student_name ||
+        'Student';
+
+
+    goal =
+        Number(
+            data.required_hours
+        ) ||
+        468;
+
+
+    settings.darkMode =
+        Boolean(
+            data.dark_mode
+        );
+
+
+    settings.autoBreakEnabled =
+        data.auto_break_enabled ??
+        true;
+
+
+    settings.autoBreakThreshold =
+        Number(
+            data.auto_break_threshold
+        ) ||
+        9;
+
+
+    settings.autoBreakMinutes =
+        data.auto_break_minutes === null ||
+            data.auto_break_minutes === undefined
+            ?
+            60
+            :
+            Number(
+                data.auto_break_minutes
+            );
+
+
+    settings.reminderEnabled =
+        Boolean(
+            data.reminder_enabled
+        );
+
+
+    settings.reminderTime =
+        data.reminder_time
+            ?
+            String(
+                data.reminder_time
+            ).slice(
+                0,
+                5
+            )
+            :
+            '17:00';
+
+
+    applyDarkMode();
+}
+
+
+
+async function saveProfile() {
+
+    const {
+        error
+    } =
+        await supabaseClient
+            .from('profiles')
+            .upsert({
+
+                id:
+                    currentUser.id,
+
+                student_name:
+                    studentName,
+
+                required_hours:
+                    goal,
+
+                dark_mode:
+                    settings.darkMode,
+
+                auto_break_enabled:
+                    settings.autoBreakEnabled,
+
+                auto_break_threshold:
+                    settings.autoBreakThreshold,
+
+                auto_break_minutes:
+                    settings.autoBreakMinutes,
+
+                reminder_enabled:
+                    settings.reminderEnabled,
+
+                reminder_time:
+                    settings.reminderTime,
+
+                updated_at:
+                    new Date()
+                        .toISOString()
+
+            });
+
+
+    if (error) {
+        throw error;
+    }
+}
+
+
+
+// 
+// SETTINGS
+// 
+
+function updateSettingsInputs() {
+
+    if ($('studentName')) {
+
+        $('studentName').value =
+            studentName;
+
+    }
+
+
+    if ($('hoursGoal')) {
+
+        $('hoursGoal').value =
+            goal;
+
+    }
+
+
+    if ($('autoBreakEnabled')) {
+
+        $('autoBreakEnabled').checked =
+            settings.autoBreakEnabled;
+
+    }
+
+
+    if ($('autoBreakThreshold')) {
+
+        $('autoBreakThreshold').value =
+            settings.autoBreakThreshold;
+
+    }
+
+
+    if ($('autoBreakMinutes')) {
+
+        $('autoBreakMinutes').value =
+            settings.autoBreakMinutes;
+
+    }
+
+
+    if ($('reminderEnabled')) {
+
+        $('reminderEnabled').checked =
+            settings.reminderEnabled;
+
+    }
+
+
+    if ($('reminderTime')) {
+
+        $('reminderTime').value =
+            settings.reminderTime;
+
+    }
+
+
+    if ($('darkModeToggle')) {
+
+        $('darkModeToggle').checked =
+            settings.darkMode;
+
+    }
+}
+
+
+
+$('settingsForm')
+    ?.addEventListener(
+        'submit',
+        async event => {
+
+            event.preventDefault();
+
+
+            const name =
+                $('studentName')
+                    .value
+                    .trim();
+
+
+            const hours =
+                Number(
+                    $('hoursGoal')
+                        .value
+                );
+
+
+            if (
+                !name ||
+                hours <= 0
+            ) {
+
+                toast(
+                    'Enter valid settings.'
+                );
+
+                return;
+            }
+
+
+            studentName =
+                name;
+
+
+            goal =
+                hours;
+
+
+            settings.autoBreakEnabled =
+                $('autoBreakEnabled')
+                    .checked;
+
+
+            settings.autoBreakThreshold =
+                Number(
+                    $('autoBreakThreshold')
+                        .value
+                ) ||
+                9;
+
+
+            settings.autoBreakMinutes =
+                Number(
+                    $('autoBreakMinutes')
+                        .value
+                ) ||
+                0;
+
+
+            settings.reminderEnabled =
+                $('reminderEnabled')
+                    .checked;
+
+
+            settings.reminderTime =
+                $('reminderTime')
+                    .value ||
+                '17:00';
+
+
+            settings.darkMode =
+                $('darkModeToggle')
+                    .checked;
+
+
+            try {
+
+                await saveProfile();
+
+
+                applyDarkMode();
+
+
+                updateStudentInfo();
+
+
+                renderDashboard();
+
+
+                renderWeeklyReport();
+
+
+                renderMonthlyReport();
+
+
+                toast(
+                    'Settings saved.'
+                );
+
+            } catch (error) {
+
+                console.error(
+                    error
+                );
+
+
+                toast(
+                    'Unable to save settings.'
+                );
+
+            }
+
+        }
+    );
+
+
+
+$('darkModeToggle')
+    ?.addEventListener(
+        'change',
+        () => {
+
+            settings.darkMode =
+                $('darkModeToggle')
+                    .checked;
+
+
+            applyDarkMode();
+
+        }
+    );
+
+
+
+function applyDarkMode() {
+
+    document.body
+        .classList
+        .toggle(
+            'dark',
+            settings.darkMode
+        );
+}
+
+
+
+// 
+// STUDENT INFORMATION
+// 
+
+function updateStudentInfo() {
+
+    const name =
+        studentName ||
+        'Student';
+
+
+    if ($('profileName')) {
+
+        $('profileName').textContent =
+            name;
+
+    }
+
+
+    if ($('overviewName')) {
+
+        $('overviewName').textContent =
+            name
+                .split(/\s+/)
+                .filter(Boolean)[0] ||
+            'Student';
+
+    }
+
+
+    if ($('profileAvatar')) {
+
+        $('profileAvatar').textContent =
+            name
+                .split(/\s+/)
+                .filter(Boolean)
+                .map(
+                    item =>
+                        item[0]
+                )
+                .slice(
+                    0,
+                    2
+                )
+                .join('')
+                .toUpperCase();
+
+    }
+
+
+    if ($('weeklyStudentName')) {
+
+        $('weeklyStudentName').textContent =
+            name;
+
+    }
+
+
+    if ($('monthlyStudentName')) {
+
+        $('monthlyStudentName').textContent =
+            name;
+
+    }
+
+
+    updateSettingsInputs();
+}
+
+
+
+// 
+// NAVIGATION
+// 
+
+const pageNames = {
+
+    overview:
+        'Dashboard',
+
+    calendar:
+        'Calendar',
+
+    attendance:
+        'Attendance',
+
+    entries:
+        'Daily Logs',
+
+    reports:
+        'Reports',
+
+    settings:
+        'Settings'
+
+};
+
+
+
+function closeMenu() {
+
+    $('sidebar')
+        ?.classList
+        .remove(
+            'open'
+        );
+
+
+    if ($('backdrop')) {
+
+        $('backdrop').hidden =
+            true;
+
+    }
+}
+
+
+
+function switchPage(pageId) {
+
+    document
+        .querySelectorAll(
+            '.page'
+        )
+        .forEach(
+            page => {
+
+                page.classList.remove(
+                    'active'
+                );
+
+            }
+        );
+
+
+    document
+        .querySelectorAll(
+            '.nav-link'
+        )
+        .forEach(
+            button => {
+
+                button.classList.remove(
+                    'active'
+                );
+
+            }
+        );
+
+
+    $(pageId)
+        ?.classList
+        .add(
+            'active'
+        );
+
+
+    document
+        .querySelector(
+            `.nav-link[data-page="${pageId}"]`
+        )
+        ?.classList
+        .add(
+            'active'
+        );
+
+
+    if ($('pageTitle')) {
+
+        $('pageTitle').textContent =
+            pageNames[pageId] ||
+            'Dashboard';
+
     }
 
 
     closeMenu();
 
 
-    window.scrollTo({
-        top: 0,
-        behavior: 'smooth'
-    });
+    if (
+        pageId ===
+        'calendar'
+    ) {
 
+        renderCalendar();
 
-    refreshIcons();
-
-}
-
-
-/* =====================================================
-   TIME CALCULATIONS
-===================================================== */
-
-function getShiftMinutes(start, end) {
-
-    if (!start || !end) {
-        return null;
-    }
-
-
-    const [sh, sm] =
-        start.split(':').map(Number);
-
-
-    const [eh, em] =
-        end.split(':').map(Number);
-
-
-    const result =
-        (eh * 60 + em) -
-        (sh * 60 + sm);
-
-
-    return result > 0
-        ? result
-        : null;
-
-}
-
-
-
-function getAutomaticBreak(start, end) {
-
-    if (!settings.autoBreakEnabled) {
-        return null;
-    }
-
-
-    const duration =
-        getShiftMinutes(
-            start,
-            end
-        );
-
-
-    if (duration === null) {
-        return null;
     }
 
 
     if (
-        duration >=
-        settings.autoBreakThreshold * 60
+        pageId ===
+        'attendance'
     ) {
 
-        return Number(
-            settings.autoBreakMinutes
-        );
+        renderAttendanceHistory();
 
     }
-
-
-    return 0;
-
-}
-
-
-
-function applyAutomaticBreak() {
-
-    const automaticBreak =
-        getAutomaticBreak(
-            $('timeIn').value,
-            $('timeOut').value
-        );
-
-
-    if (automaticBreak === null) {
-
-        $('autoBreakNote')
-            .textContent =
-            '';
-
-        return;
-
-    }
-
-
-    $('breakMinutes').value =
-        automaticBreak;
-
-
-    if (automaticBreak > 0) {
-
-        $('autoBreakNote')
-            .textContent =
-            `Automatic break applied: ${automaticBreak} minutes.`;
-
-    } else {
-
-        $('autoBreakNote')
-            .textContent =
-            'No automatic break is required for this shift.';
-
-    }
-
-}
-
-
-
-function calculateHours(
-    start,
-    end,
-    breakValue
-) {
-
-    const duration =
-        getShiftMinutes(
-            start,
-            end
-        );
-
-
-    if (duration === null) {
-        return null;
-    }
-
-
-    const breakMinutes =
-        Number(breakValue);
 
 
     if (
-        !Number.isFinite(breakMinutes) ||
-        breakMinutes < 0 ||
-        breakMinutes >= duration
+        pageId ===
+        'entries'
     ) {
 
-        return null;
+        renderEntries();
 
     }
 
-
-    return Math.round(
-        (
-            (
-                duration -
-                breakMinutes
-            ) /
-            60
-        ) *
-        100
-    ) / 100;
-
-}
-
-
-
-function updatePreview() {
 
     if (
-        settings.autoBreakEnabled &&
-        $('timeIn').value &&
-        $('timeOut').value
+        pageId ===
+        'reports'
     ) {
 
-        applyAutomaticBreak();
+        renderWeeklyReport();
+
+        renderMonthlyReport();
 
     }
 
 
-    const hours =
-        calculateHours(
-            $('timeIn').value,
-            $('timeOut').value,
-            $('breakMinutes').value
-        );
-
-
-    $('hoursPreview')
-        .textContent =
-        hours === null
-
-            ? 'Rendered hours: —'
-
-            : `Rendered hours: ${fmt(hours)} hrs`;
-
+    createIcons();
 }
 
 
 
-[
-    'timeIn',
-    'timeOut'
-]
-    .forEach(id => {
+document
+    .querySelectorAll(
+        '[data-page]'
+    )
+    .forEach(
+        button => {
 
-        $(id).addEventListener(
-            'input',
-            updatePreview
-        );
+            button.addEventListener(
+                'click',
+                () => {
 
-    });
+                    switchPage(
+                        button.dataset.page
+                    );
 
-
-$('breakMinutes')
-    .addEventListener(
-        'input',
-        () => {
-
-            const hours =
-                calculateHours(
-                    $('timeIn').value,
-                    $('timeOut').value,
-                    $('breakMinutes').value
-                );
-
-
-            $('hoursPreview')
-                .textContent =
-                hours === null
-
-                    ? 'Rendered hours: —'
-
-                    : `Rendered hours: ${fmt(hours)} hrs`;
-
-        }
-    );
-
-
-
-$('timeInNow')
-    .addEventListener(
-        'click',
-        () => {
-
-            $('entryDate').value =
-                localDate();
-
-            $('timeIn').value =
-                currentTime();
-
-            updatePreview();
-
-        }
-    );
-
-
-
-$('timeOutNow')
-    .addEventListener(
-        'click',
-        () => {
-
-            $('timeOut').value =
-                currentTime();
-
-            updatePreview();
-
-        }
-    );
-
-
-/* =====================================================
-   ATTENDANCE
-===================================================== */
-
-function attendanceForDate(date) {
-
-    return attendances.find(
-        attendance =>
-            attendance.date === date
-    );
-
-}
-
-
-
-function entryForDate(date) {
-
-    return entries.find(
-        entry =>
-            entry.date === date
-    );
-
-}
-
-
-
-$('quickTimeIn')
-    .addEventListener(
-        'click',
-        async () => {
-
-            const date =
-                localDate();
-
-
-            let attendance =
-                attendanceForDate(date);
-
-
-            if (attendance?.timeIn) {
-
-                toast(
-                    'You already timed in today.'
-                );
-
-                return;
-
-            }
-
-
-            if (!attendance) {
-
-                attendance = {
-
-                    id:
-                        crypto.randomUUID(),
-
-                    date,
-
-                    timeIn:
-                        currentTime(),
-
-                    timeOut:
-                        '',
-
-                    createdAt:
-                        Date.now()
-                };
-
-
-                attendances.unshift(
-                    attendance
-                );
-
-            } else {
-
-                attendance.timeIn =
-                    currentTime();
-
-            }
-
-
-            await saveData();
-
-            render();
-
-            toast(
-                `Timed in at ${formatClockTime(
-                    attendance.timeIn
-                )}.`
+                }
             );
 
         }
@@ -1006,90 +1605,352 @@ $('quickTimeIn')
 
 
 
-$('quickTimeOut')
-    .addEventListener(
+// 
+// MOBILE SIDEBAR
+// 
+
+$('menuButton')
+    ?.addEventListener(
+        'click',
+        () => {
+
+            const open =
+                $('sidebar')
+                    .classList
+                    .toggle(
+                        'open'
+                    );
+
+
+            if ($('backdrop')) {
+
+                $('backdrop').hidden =
+                    !open;
+
+            }
+
+        }
+    );
+
+
+
+$('backdrop')
+    ?.addEventListener(
+        'click',
+        closeMenu
+    );
+
+
+
+// 
+// ATTENDANCE
+// 
+
+async function loadAttendance() {
+
+    const {
+        data,
+        error
+    } =
+        await supabaseClient
+            .from('attendance')
+            .select('*')
+            .order(
+                'attendance_date',
+                {
+                    ascending:
+                        false
+                }
+            );
+
+
+    if (error) {
+        throw error;
+    }
+
+
+    attendances =
+        (data || [])
+            .map(
+                item => ({
+
+                    id:
+                        item.id,
+
+                    date:
+                        item.attendance_date,
+
+                    timeIn:
+                        item.time_in,
+
+                    timeOut:
+                        item.time_out
+
+                })
+            );
+}
+
+
+
+async function saveAttendance(
+    record
+) {
+
+    const {
+        data,
+        error
+    } =
+        await supabaseClient
+            .from('attendance')
+            .upsert(
+                {
+
+                    user_id:
+                        currentUser.id,
+
+                    attendance_date:
+                        record.date,
+
+                    time_in:
+                        record.timeIn ||
+                        null,
+
+                    time_out:
+                        record.timeOut ||
+                        null,
+
+                    updated_at:
+                        new Date()
+                            .toISOString()
+
+                },
+                {
+
+                    onConflict:
+                        'user_id,attendance_date'
+
+                }
+            )
+            .select()
+            .single();
+
+
+    if (error) {
+        throw error;
+    }
+
+
+    return {
+
+        id:
+            data.id,
+
+        date:
+            data.attendance_date,
+
+        timeIn:
+            data.time_in,
+
+        timeOut:
+            data.time_out
+
+    };
+}
+
+
+
+// 
+// TIME IN
+// ONE ATTENDANCE RECORD PER ACTUAL DAY
+// 
+
+$('quickTimeIn')
+    ?.addEventListener(
         'click',
         async () => {
 
-            const attendance =
-                attendanceForDate(
-                    localDate()
+            const today =
+                localDate();
+
+
+            const existing =
+                attendances.find(
+                    item =>
+                        item.date ===
+                        today
+                );
+
+
+            if (existing) {
+
+                toast(
+                    'You already have an attendance record for today.'
+                );
+
+                return;
+            }
+
+
+            try {
+
+                const saved =
+                    await saveAttendance({
+
+                        date:
+                            today,
+
+                        timeIn:
+                            currentTime(),
+
+                        timeOut:
+                            null
+
+                    });
+
+
+                attendances.push(
+                    saved
+                );
+
+
+                render();
+
+
+                toast(
+                    `Timed in at ${formatTime(saved.timeIn)}.`
+                );
+
+            } catch (error) {
+
+                console.error(
+                    error
+                );
+
+
+                toast(
+                    'Unable to save Time In.'
+                );
+
+            }
+
+        }
+    );
+
+
+
+// 
+// TIME OUT
+// 
+
+$('quickTimeOut')
+    ?.addEventListener(
+        'click',
+        async () => {
+
+            const today =
+                localDate();
+
+
+            const record =
+                attendances.find(
+                    item =>
+                        item.date ===
+                        today
                 );
 
 
             if (
-                !attendance ||
-                !attendance.timeIn
+                !record?.timeIn
             ) {
 
                 toast(
-                    'Time in first.'
+                    'Time In first.'
                 );
 
                 return;
-
             }
 
 
-            if (attendance.timeOut) {
+            if (
+                record.timeOut
+            ) {
 
                 toast(
-                    'You already timed out.'
+                    'You already timed out today.'
                 );
 
-                return;
-
-            }
-
-
-            const confirmed =
-                confirm(
-                    `Time out now at ${formatClockTime(
-                        currentTime()
-                    )}?`
-                );
-
-
-            if (!confirmed) {
                 return;
             }
 
 
-            attendance.timeOut =
+            const now =
                 currentTime();
 
 
-            await saveData();
-
-            render();
-
-
-            openForm();
+            const okay =
+                confirm(
+                    `Time out at ${formatTime(now)}?`
+                );
 
 
-            $('entryDate').value =
-                attendance.date;
+            if (!okay) {
+                return;
+            }
 
 
-            $('timeIn').value =
-                attendance.timeIn;
+            try {
+
+                const saved =
+                    await saveAttendance({
+
+                        ...record,
+
+                        timeOut:
+                            now
+
+                    });
 
 
-            $('timeOut').value =
-                attendance.timeOut;
+                Object.assign(
+                    record,
+                    saved
+                );
 
 
-            updatePreview();
+                render();
 
 
-            toast(
-                'Time out recorded. Complete your daily log.'
-            );
+                toast(
+                    `Timed out at ${formatTime(saved.timeOut)}.`
+                );
+
+
+                openEntryForm(
+                    null,
+                    saved
+                );
+
+            } catch (error) {
+
+                console.error(
+                    error
+                );
+
+
+                toast(
+                    'Unable to save Time Out.'
+                );
+
+            }
 
         }
     );
 
 
+
+// 
+// TODAY ATTENDANCE UI
+// 
 
 function renderTodayAttendance() {
 
@@ -1097,31 +1958,39 @@ function renderTodayAttendance() {
         localDate();
 
 
-    const attendance =
-        attendanceForDate(today);
+    const record =
+        attendances.find(
+            item =>
+                item.date ===
+                today
+        );
 
 
-    $('attendanceDate')
-        .textContent =
-        formatLongDate(today);
+    if ($('attendanceDate')) {
+
+        $('attendanceDate').textContent =
+            formatDate(
+                today
+            );
+
+    }
 
 
-    const warning =
-        $('attendanceWarning');
+    if ($('attendanceWarning')) {
+
+        $('attendanceWarning').hidden =
+            true;
+
+    }
 
 
-    warning.hidden = true;
+    if (!record) {
+
+        $('attendanceStatus').textContent =
+            "You haven't timed in yet.";
 
 
-    if (!attendance) {
-
-        $('attendanceStatus')
-            .textContent =
-            'You haven\'t timed in yet.';
-
-
-        $('attendanceTimes')
-            .innerHTML =
+        $('attendanceTimes').innerHTML =
             '';
 
 
@@ -1134,32 +2003,34 @@ function renderTodayAttendance() {
 
 
         return;
-
     }
 
 
+    $('attendanceTimes').innerHTML =
+        `
+        <span>
+            Time In:
+            <strong>
+                ${formatTime(record.timeIn)}
+            </strong>
+        </span>
+
+        <span>
+            Time Out:
+            <strong>
+                ${formatTime(record.timeOut)}
+            </strong>
+        </span>
+        `;
+
+
     if (
-        attendance.timeIn &&
-        !attendance.timeOut
+        record.timeIn &&
+        !record.timeOut
     ) {
 
-        $('attendanceStatus')
-            .textContent =
+        $('attendanceStatus').textContent =
             'Currently timed in.';
-
-
-        $('attendanceTimes')
-            .innerHTML = `
-
-                <span>
-                    Time In:
-                    <strong>
-                        ${formatClockTime(
-                attendance.timeIn
-            )}
-                    </strong>
-                </span>
-            `;
 
 
         $('quickTimeIn').disabled =
@@ -1170,190 +2041,172 @@ function renderTodayAttendance() {
             false;
 
 
-        warning.hidden = false;
+        if ($('attendanceWarning')) {
+
+            $('attendanceWarning').hidden =
+                false;
+
+        }
 
 
-        $('attendanceWarningText')
-            .textContent =
-            `You timed in at ${formatClockTime(
-                attendance.timeIn
-            )} but have not timed out yet.`;
+        if ($('attendanceWarningText')) {
+
+            $('attendanceWarningText').textContent =
+                'You are currently timed in. Remember to Time Out before leaving.';
+
+        }
+
+    } else {
+
+        $('attendanceStatus').textContent =
+            'Attendance completed.';
 
 
-        return;
+        $('quickTimeIn').disabled =
+            true;
+
+
+        $('quickTimeOut').disabled =
+            true;
 
     }
-
-
-    $('attendanceStatus')
-        .textContent =
-        'Attendance recorded for today.';
-
-
-    $('attendanceTimes')
-        .innerHTML = `
-
-            <span>
-                Time In:
-                <strong>
-                    ${formatClockTime(
-            attendance.timeIn
-        )}
-                </strong>
-            </span>
-
-            <span>
-                Time Out:
-                <strong>
-                    ${formatClockTime(
-            attendance.timeOut
-        )}
-                </strong>
-            </span>
-        `;
-
-
-    $('quickTimeIn').disabled =
-        true;
-
-
-    $('quickTimeOut').disabled =
-        true;
-
 }
 
 
-/* ATTENDANCE HISTORY */
+
+// 
+// ATTENDANCE HISTORY
+// 
 
 function renderAttendanceHistory() {
 
-    const filter =
-        $('attendanceMonthFilter').value;
+    if (
+        !$('attendanceHistory')
+    ) {
+        return;
+    }
 
 
-    let selected =
-        [...attendances]
-            .sort(
-                (a, b) =>
-                    b.date.localeCompare(a.date)
-            );
+    const month =
+        $('attendanceMonthFilter')
+            ?.value ||
+        '';
 
 
-    if (filter) {
+    let list =
+        [...attendances];
 
-        selected =
-            selected.filter(
-                attendance =>
-                    attendance.date.startsWith(
-                        filter
+
+    if (month) {
+
+        list =
+            list.filter(
+                record =>
+                    record.date.startsWith(
+                        month
                     )
             );
 
     }
 
 
-    if (!selected.length) {
+    list.sort(
+        (a, b) =>
+            b.date.localeCompare(
+                a.date
+            )
+    );
 
-        $('attendanceHistory')
-            .innerHTML = `
 
-                <div class="empty">
-                    No attendance records found.
-                </div>
+    if (
+        !list.length
+    ) {
+
+        $('attendanceHistory').innerHTML =
+            `
+            <div class="empty">
+                No attendance records.
+            </div>
             `;
 
         return;
-
     }
 
 
-    $('attendanceHistory')
-        .innerHTML =
-        selected.map(
-            attendance => `
-
-                <article class="
-                    attendance-record
-                    ${!attendance.timeOut
-                    ? 'incomplete'
-                    : ''
-                }
-                ">
-
-                    <div>
-
-                        <strong>
-                            ${formatDate(
-                    attendance.date
-                )}
-                        </strong>
-
-                        <small>
-                            ${attendance.timeOut
-                    ? 'Complete'
-                    : 'Incomplete attendance'
-                }
-                        </small>
-
-                    </div>
-
-
-                    <div class="attendance-time-value">
-
-                        <span>
-                            TIME IN
-                        </span>
-
-                        ${formatClockTime(
-                    attendance.timeIn
-                )}
-
-                    </div>
-
-
-                    <div class="attendance-time-value">
-
-                        <span>
-                            TIME OUT
-                        </span>
-
-                        ${formatClockTime(
-                    attendance.timeOut
-                )}
-
-                    </div>
-
-
-                    <button
-                        class="attendance-edit-button"
-                        data-edit-attendance="${attendance.id}"
-                        type="button"
+    $('attendanceHistory').innerHTML =
+        list
+            .map(
+                record => `
+                    <article
+                        class="
+                            attendance-record
+                            ${!record.timeOut ? 'incomplete' : ''}
+                        "
                     >
-                        Edit
-                    </button>
 
-                </article>
-            `
-        ).join('');
+                        <div>
 
+                            <strong>
+                                ${formatDate(record.date)}
+                            </strong>
+
+                            <small>
+                                ${record.timeOut
+                        ?
+                        'Completed'
+                        :
+                        'Incomplete'
+                    }
+                            </small>
+
+                        </div>
+
+
+                        <div class="attendance-time-value">
+
+                            <span>
+                                TIME IN
+                            </span>
+
+                            ${formatTime(record.timeIn)}
+
+                        </div>
+
+
+                        <div class="attendance-time-value">
+
+                            <span>
+                                TIME OUT
+                            </span>
+
+                            ${formatTime(record.timeOut)}
+
+                        </div>
+
+                    </article>
+                `
+            )
+            .join('');
 }
 
 
 
 $('attendanceMonthFilter')
-    .addEventListener(
+    ?.addEventListener(
         'change',
         renderAttendanceHistory
     );
 
 
+
 $('clearAttendanceMonth')
-    .addEventListener(
+    ?.addEventListener(
         'click',
         () => {
 
             $('attendanceMonthFilter').value =
                 '';
+
 
             renderAttendanceHistory();
 
@@ -1362,136 +2215,2098 @@ $('clearAttendanceMonth')
 
 
 
-function openAttendanceEdit(id) {
+// 
+// HOURS
+// 
 
-    const attendance =
-        attendances.find(
-            item => item.id === id
-        );
+function calculateRawShiftHours(
+    start,
+    end
+) {
 
-
-    if (!attendance) {
-        return;
+    if (
+        !start ||
+        !end
+    ) {
+        return 0;
     }
 
 
-    $('attendanceEditId').value =
-        attendance.id;
+    const [
+        startHour,
+        startMinute
+    ] =
+        start
+            .split(':')
+            .map(Number);
 
 
-    $('attendanceEditDate').value =
-        attendance.date;
+    const [
+        endHour,
+        endMinute
+    ] =
+        end
+            .split(':')
+            .map(Number);
 
 
-    $('attendanceEditTimeIn').value =
-        attendance.timeIn || '';
+    const startTotal =
+        startHour * 60 +
+        startMinute;
 
 
-    $('attendanceEditTimeOut').value =
-        attendance.timeOut || '';
+    const endTotal =
+        endHour * 60 +
+        endMinute;
 
 
-    $('attendanceDialog')
-        .showModal();
+    if (
+        endTotal <=
+        startTotal
+    ) {
+        return 0;
+    }
 
+
+    return (
+        endTotal -
+        startTotal
+    ) / 60;
 }
 
 
 
-$('attendanceForm')
-    .addEventListener(
-        'submit',
-        async event => {
+function calculateHours(
+    start,
+    end,
+    breakMinutes
+) {
 
-            event.preventDefault();
+    const raw =
+        calculateRawShiftHours(
+            start,
+            end
+        );
 
 
-            const attendance =
-                attendances.find(
-                    item =>
-                        item.id ===
-                        $('attendanceEditId').value
+    if (
+        raw <= 0
+    ) {
+        return 0;
+    }
+
+
+    const minutes =
+        raw * 60 -
+        Number(
+            breakMinutes ||
+            0
+        );
+
+
+    if (
+        minutes <= 0
+    ) {
+        return 0;
+    }
+
+
+    return Number(
+        (
+            minutes /
+            60
+        ).toFixed(2)
+    );
+}
+
+
+
+function applyAutoBreak() {
+
+    if (
+        !settings.autoBreakEnabled
+    ) {
+
+        if ($('autoBreakNote')) {
+
+            $('autoBreakNote').textContent =
+                '';
+
+        }
+
+
+        return;
+    }
+
+
+    const raw =
+        calculateRawShiftHours(
+
+            $('timeIn').value,
+
+            $('timeOut').value
+
+        );
+
+
+    if (
+        raw >=
+        settings.autoBreakThreshold
+    ) {
+
+        $('breakMinutes').value =
+            settings.autoBreakMinutes;
+
+
+        $('autoBreakNote').textContent =
+            `${settings.autoBreakMinutes} minute automatic break applied.`;
+
+    } else {
+
+        $('breakMinutes').value =
+            0;
+
+
+        $('autoBreakNote').textContent =
+            '';
+
+    }
+}
+
+
+
+function updateHoursPreview() {
+
+    if (
+        settings.autoBreakEnabled
+    ) {
+
+        applyAutoBreak();
+
+    }
+
+
+    const hours =
+        calculateHours(
+
+            $('timeIn').value,
+
+            $('timeOut').value,
+
+            $('breakMinutes').value
+
+        );
+
+
+    $('hoursPreview').textContent =
+        `Rendered hours: ${hours.toFixed(2)} hrs`;
+}
+
+
+
+[
+    'timeIn',
+    'timeOut'
+].forEach(
+    id => {
+
+        $(id)
+            ?.addEventListener(
+                'input',
+                updateHoursPreview
+            );
+
+    }
+);
+
+
+
+$('breakMinutes')
+    ?.addEventListener(
+        'input',
+        () => {
+
+            const hours =
+                calculateHours(
+
+                    $('timeIn').value,
+
+                    $('timeOut').value,
+
+                    $('breakMinutes').value
+
                 );
 
 
-            if (!attendance) {
+            $('hoursPreview').textContent =
+                `Rendered hours: ${hours.toFixed(2)} hrs`;
+
+        }
+    );
+
+
+
+$('timeInNow')
+    ?.addEventListener(
+        'click',
+        () => {
+
+            $('timeIn').value =
+                currentTime();
+
+
+            updateHoursPreview();
+
+        }
+    );
+
+
+
+$('timeOutNow')
+    ?.addEventListener(
+        'click',
+        () => {
+
+            $('timeOut').value =
+                currentTime();
+
+
+            updateHoursPreview();
+
+        }
+    );
+
+
+
+// 
+// SUPABASE STORAGE
+// 
+
+async function uploadEvidence(
+    file
+) {
+
+    if (
+        !file ||
+        !currentUser
+    ) {
+        return null;
+    }
+
+
+    const extension =
+        file.name
+            .split('.')
+            .pop()
+            .toLowerCase();
+
+
+    const allowedExtensions =
+        [
+            'jpg',
+            'jpeg',
+            'png',
+            'webp'
+        ];
+
+
+    const safeExtension =
+        allowedExtensions
+            .includes(
+                extension
+            )
+            ?
+            extension
+            :
+            'jpg';
+
+
+    const filename =
+        `${Date.now()}-${crypto.randomUUID()}.${safeExtension}`;
+
+
+    const path =
+        `${currentUser.id}/${filename}`;
+
+
+    const {
+        data,
+        error
+    } =
+        await supabaseClient
+            .storage
+            .from('evidence')
+            .upload(
+                path,
+                file,
+                {
+                    cacheControl:
+                        '3600',
+
+                    upsert:
+                        false
+                }
+            );
+
+
+    if (error) {
+        throw error;
+    }
+
+
+    return data.path;
+}
+
+
+
+async function getEvidenceURL(
+    path
+) {
+
+    if (!path) {
+        return null;
+    }
+
+
+    const {
+        data,
+        error
+    } =
+        await supabaseClient
+            .storage
+            .from('evidence')
+            .createSignedUrl(
+                path,
+                60 * 60
+            );
+
+
+    if (error) {
+
+        console.error(
+            'Evidence URL:',
+            error
+        );
+
+
+        return null;
+    }
+
+
+    return data.signedUrl;
+}
+
+
+
+async function deleteEvidence(
+    path
+) {
+
+    if (!path) {
+        return;
+    }
+
+
+    const {
+        error
+    } =
+        await supabaseClient
+            .storage
+            .from('evidence')
+            .remove([
+                path
+            ]);
+
+
+    if (error) {
+
+        console.error(
+            'Evidence delete:',
+            error
+        );
+
+    }
+}
+
+
+
+// 
+// LOAD ENTRIES
+// 
+
+async function loadEntries() {
+
+    const {
+        data,
+        error
+    } =
+        await supabaseClient
+            .from('entries')
+            .select('*')
+            .order(
+                'entry_date',
+                {
+                    ascending:
+                        false
+                }
+            );
+
+
+    if (error) {
+        throw error;
+    }
+
+
+    const mapped =
+        (data || [])
+            .map(
+                item => ({
+
+                    id:
+                        item.id,
+
+                    date:
+                        item.entry_date,
+
+                    task:
+                        item.task,
+
+                    timeIn:
+                        item.time_in,
+
+                    timeOut:
+                        item.time_out,
+
+                    breakMinutes:
+                        Number(
+                            item.break_minutes
+                        ) ||
+                        0,
+
+                    hours:
+                        Number(
+                            item.rendered_hours
+                        ) ||
+                        0,
+
+                    description:
+                        item.description ||
+                        '',
+
+                    evidencePath:
+                        item.evidence_path ||
+                        null,
+
+                    evidenceUrl:
+                        null
+
+                })
+            );
+
+
+    await Promise.all(
+
+        mapped.map(
+            async entry => {
+
+                if (
+                    entry.evidencePath
+                ) {
+
+                    entry.evidenceUrl =
+                        await getEvidenceURL(
+                            entry.evidencePath
+                        );
+
+                }
+
+            }
+        )
+
+    );
+
+
+    entries =
+        mapped;
+}
+
+
+
+// 
+// EVIDENCE INPUT
+// 
+
+$('evidence')
+    ?.addEventListener(
+        'change',
+        event => {
+
+            const file =
+                event.target
+                    .files?.[0] ||
+                null;
+
+
+            selectedEvidenceFile =
+                file;
+
+
+            if (
+                selectedEvidencePreviewURL
+            ) {
+
+                URL.revokeObjectURL(
+                    selectedEvidencePreviewURL
+                );
+
+
+                selectedEvidencePreviewURL =
+                    null;
+
+            }
+
+
+            if (!file) {
+
+                $('attachmentNote').textContent =
+                    existingEvidencePath
+                        ?
+                        'Current photo evidence attached.'
+                        :
+                        '';
+
+
+                if (
+                    existingEvidenceUrl
+                ) {
+
+                    $('evidencePreviewImage').src =
+                        existingEvidenceUrl;
+
+
+                    $('evidencePreview').hidden =
+                        false;
+
+                } else {
+
+                    $('evidencePreview').hidden =
+                        true;
+
+                }
+
+
                 return;
             }
 
 
-            attendance.date =
-                $('attendanceEditDate').value;
+            $('attachmentNote').textContent =
+                `Selected: ${file.name}`;
 
 
-            attendance.timeIn =
-                $('attendanceEditTimeIn').value;
+            selectedEvidencePreviewURL =
+                URL.createObjectURL(
+                    file
+                );
 
 
-            attendance.timeOut =
-                $('attendanceEditTimeOut').value;
+            $('evidencePreviewImage').src =
+                selectedEvidencePreviewURL;
 
 
-            await saveData();
+            $('evidencePreview').hidden =
+                false;
+
+        }
+    );
 
 
-            $('attendanceDialog')
-                .close();
+
+// 
+// ENTRY FORM
+// 
+
+function resetEntryForm() {
+
+    editingId =
+        null;
 
 
-            render();
+    selectedEvidenceFile =
+        null;
 
 
-            toast(
-                'Attendance updated.'
+    existingEvidencePath =
+        null;
+
+
+    existingEvidenceUrl =
+        null;
+
+
+    if (
+        selectedEvidencePreviewURL
+    ) {
+
+        URL.revokeObjectURL(
+            selectedEvidencePreviewURL
+        );
+
+
+        selectedEvidencePreviewURL =
+            null;
+
+    }
+
+
+    $('entryForm').reset();
+
+
+    $('entryDate').value =
+        localDate();
+
+
+    $('breakMinutes').value =
+        settings.autoBreakMinutes;
+
+
+    $('formTitle').textContent =
+        'New Entry';
+
+
+    $('formError').textContent =
+        '';
+
+
+    $('attachmentNote').textContent =
+        '';
+
+
+    $('evidencePreview').hidden =
+        true;
+
+
+    $('evidencePreviewImage').src =
+        '';
+
+
+    $('autoBreakNote').textContent =
+        '';
+
+
+    updateHoursPreview();
+}
+
+
+
+function openEntryForm(
+    entry = null,
+    attendance = null
+) {
+
+    resetEntryForm();
+
+
+    if (entry) {
+
+        editingId =
+            entry.id;
+
+
+        $('formTitle').textContent =
+            'Edit Entry';
+
+
+        $('entryDate').value =
+            entry.date;
+
+
+        $('task').value =
+            entry.task;
+
+
+        $('timeIn').value =
+            entry.timeIn ||
+            '';
+
+
+        $('timeOut').value =
+            entry.timeOut ||
+            '';
+
+
+        $('breakMinutes').value =
+            entry.breakMinutes;
+
+
+        $('description').value =
+            entry.description;
+
+
+        existingEvidencePath =
+            entry.evidencePath;
+
+
+        existingEvidenceUrl =
+            entry.evidenceUrl;
+
+
+        if (
+            entry.evidenceUrl
+        ) {
+
+            $('evidencePreviewImage').src =
+                entry.evidenceUrl;
+
+
+            $('evidencePreview').hidden =
+                false;
+
+
+            $('attachmentNote').textContent =
+                'Current photo evidence attached.';
+
+        }
+
+    }
+
+
+    if (attendance) {
+
+        $('entryDate').value =
+            attendance.date;
+
+
+        $('timeIn').value =
+            attendance.timeIn ||
+            '';
+
+
+        $('timeOut').value =
+            attendance.timeOut ||
+            '';
+
+    }
+
+
+    updateHoursPreview();
+
+
+    $('entryDialog')
+        .showModal();
+}
+
+
+
+document
+    .querySelectorAll(
+        '[data-new]'
+    )
+    .forEach(
+        button => {
+
+            button.addEventListener(
+                'click',
+                () => {
+
+                    openEntryForm();
+
+                }
             );
 
         }
     );
 
 
-$('closeAttendanceDialog')
-    .addEventListener(
+
+$('closeForm')
+    ?.addEventListener(
         'click',
-        () =>
-            $('attendanceDialog')
-                .close()
+        () => {
+
+            $('entryDialog')
+                .close();
+
+        }
     );
 
 
-$('cancelAttendanceEdit')
-    .addEventListener(
+
+$('cancelForm')
+    ?.addEventListener(
         'click',
-        () =>
-            $('attendanceDialog')
-                .close()
+        () => {
+
+            $('entryDialog')
+                .close();
+
+        }
     );
 
 
-/* =====================================================
-   DASHBOARD RENDER
-===================================================== */
 
-function sortedEntries() {
+// 
+// CLOUD DUPLICATE DATE CHECK
+// 
 
-    return [...entries]
-        .sort(
-            (a, b) =>
-                b.date.localeCompare(a.date) ||
-                Number(b.createdAt || 0) -
-                Number(a.createdAt || 0)
-        );
+async function checkDuplicateLogDate(
+    selectedDate,
+    currentEntryId = null
+) {
 
+    let query =
+        supabaseClient
+            .from('entries')
+            .select('id')
+            .eq(
+                'user_id',
+                currentUser.id
+            )
+            .eq(
+                'entry_date',
+                selectedDate
+            );
+
+
+    if (
+        currentEntryId
+    ) {
+
+        query =
+            query.neq(
+                'id',
+                currentEntryId
+            );
+
+    }
+
+
+    const {
+        data,
+        error
+    } =
+        await query.limit(1);
+
+
+    if (error) {
+        throw error;
+    }
+
+
+    return (
+        data &&
+        data.length >
+        0
+    );
 }
 
 
 
-function render() {
+// 
+// SAVE DAILY ENTRY
+//
+// RULE:
+// 1 LOG MAXIMUM FOR EACH SELECTED DATE
+//
+// Sep 30 = allowed
+// Sep 29 = allowed
+// Sep 28 = allowed
+//
+// Another Sep 30 = BLOCKED
+// 
 
-    const total =
+$('entryForm')
+    ?.addEventListener(
+        'submit',
+        async event => {
+
+            event.preventDefault();
+
+
+            $('formError').textContent =
+                '';
+
+
+            const entry = {
+
+                date:
+                    $('entryDate').value,
+
+                task:
+                    $('task')
+                        .value
+                        .trim(),
+
+                timeIn:
+                    $('timeIn').value,
+
+                timeOut:
+                    $('timeOut').value,
+
+                breakMinutes:
+                    Number(
+                        $('breakMinutes')
+                            .value
+                    ) ||
+                    0,
+
+                description:
+                    $('description')
+                        .value
+                        .trim()
+
+            };
+
+
+            entry.hours =
+                calculateHours(
+
+                    entry.timeIn,
+
+                    entry.timeOut,
+
+                    entry.breakMinutes
+
+                );
+
+
+            if (
+                !entry.date ||
+                !entry.task ||
+                !entry.timeIn ||
+                !entry.timeOut ||
+                !entry.description
+            ) {
+
+                $('formError').textContent =
+                    'Complete all required fields.';
+
+                return;
+            }
+
+
+            if (
+                entry.hours <=
+                0
+            ) {
+
+                $('formError').textContent =
+                    'Time Out must be later than Time In.';
+
+                return;
+            }
+
+
+            /*
+             * FIRST CHECK:
+             * Current loaded data
+             */
+
+            const localDuplicate =
+                entries.some(
+                    item =>
+                        item.date ===
+                        entry.date &&
+                        item.id !==
+                        editingId
+                );
+
+
+            if (
+                localDuplicate
+            ) {
+
+                $('formError').textContent =
+                    'A daily log already exists for this date. Edit the existing log or choose another date.';
+
+                return;
+            }
+
+
+            $('saveButton').disabled =
+                true;
+
+
+            $('saveButton').textContent =
+                'Checking date...';
+
+
+            let newEvidencePath =
+                existingEvidencePath;
+
+
+            let uploadedNewEvidence =
+                false;
+
+
+            try {
+
+                /*
+                 * SECOND CHECK:
+                 * Supabase itself
+                 *
+                 * This prevents stale data from another
+                 * browser/device creating duplicates.
+                 */
+
+                const cloudDuplicate =
+                    await checkDuplicateLogDate(
+
+                        entry.date,
+
+                        editingId
+
+                    );
+
+
+                if (
+                    cloudDuplicate
+                ) {
+
+                    $('formError').textContent =
+                        'A daily log already exists for this date. Edit the existing log or choose another date.';
+
+                    return;
+                }
+
+
+                $('saveButton').textContent =
+                    'Saving...';
+
+
+                if (
+                    selectedEvidenceFile
+                ) {
+
+                    newEvidencePath =
+                        await uploadEvidence(
+                            selectedEvidenceFile
+                        );
+
+
+                    uploadedNewEvidence =
+                        true;
+
+                }
+
+
+                if (
+                    editingId
+                ) {
+
+                    const {
+                        error
+                    } =
+                        await supabaseClient
+                            .from('entries')
+                            .update({
+
+                                entry_date:
+                                    entry.date,
+
+                                task:
+                                    entry.task,
+
+                                time_in:
+                                    entry.timeIn,
+
+                                time_out:
+                                    entry.timeOut,
+
+                                break_minutes:
+                                    entry.breakMinutes,
+
+                                rendered_hours:
+                                    entry.hours,
+
+                                description:
+                                    entry.description,
+
+                                evidence_path:
+                                    newEvidencePath,
+
+                                updated_at:
+                                    new Date()
+                                        .toISOString()
+
+                            })
+                            .eq(
+                                'id',
+                                editingId
+                            )
+                            .eq(
+                                'user_id',
+                                currentUser.id
+                            );
+
+
+                    if (error) {
+
+                        if (
+                            error.code ===
+                            '23505'
+                        ) {
+
+                            throw new Error(
+                                'A daily log already exists for this date.'
+                            );
+
+                        }
+
+
+                        throw error;
+
+                    }
+
+
+                    if (
+                        uploadedNewEvidence &&
+                        existingEvidencePath &&
+                        existingEvidencePath !==
+                        newEvidencePath
+                    ) {
+
+                        await deleteEvidence(
+                            existingEvidencePath
+                        );
+
+                    }
+
+                } else {
+
+                    const {
+                        error
+                    } =
+                        await supabaseClient
+                            .from('entries')
+                            .insert({
+
+                                user_id:
+                                    currentUser.id,
+
+                                entry_date:
+                                    entry.date,
+
+                                task:
+                                    entry.task,
+
+                                time_in:
+                                    entry.timeIn,
+
+                                time_out:
+                                    entry.timeOut,
+
+                                break_minutes:
+                                    entry.breakMinutes,
+
+                                rendered_hours:
+                                    entry.hours,
+
+                                description:
+                                    entry.description,
+
+                                evidence_path:
+                                    newEvidencePath
+
+                            });
+
+
+                    if (error) {
+
+                        if (
+                            error.code ===
+                            '23505'
+                        ) {
+
+                            throw new Error(
+                                'A daily log already exists for this date.'
+                            );
+
+                        }
+
+
+                        throw error;
+
+                    }
+
+                }
+
+
+                await loadEntries();
+
+
+                $('entryDialog')
+                    .close();
+
+
+                render();
+
+
+                toast(
+                    editingId
+                        ?
+                        'Entry updated.'
+                        :
+                        'Entry saved.'
+                );
+
+
+                editingId =
+                    null;
+
+
+                selectedEvidenceFile =
+                    null;
+
+
+                existingEvidencePath =
+                    null;
+
+
+                existingEvidenceUrl =
+                    null;
+
+            } catch (error) {
+
+                console.error(
+                    'Entry save:',
+                    error
+                );
+
+
+                /*
+                 * If upload succeeded but DB failed,
+                 * clean up the unused new photo.
+                 */
+
+                if (
+                    uploadedNewEvidence &&
+                    newEvidencePath !==
+                    existingEvidencePath
+                ) {
+
+                    await deleteEvidence(
+                        newEvidencePath
+                    );
+
+                }
+
+
+                $('formError').textContent =
+                    error.message ||
+                    'Unable to save entry.';
+
+            } finally {
+
+                $('saveButton').disabled =
+                    false;
+
+
+                $('saveButton').textContent =
+                    'Save Entry';
+
+            }
+
+        }
+    );
+
+
+
+// 
+// DELETE ENTRY
+// 
+
+async function deleteEntry(id) {
+
+    const entry =
+        entries.find(
+            item =>
+                item.id ===
+                id
+        );
+
+
+    if (!entry) {
+        return;
+    }
+
+
+    const okay =
+        confirm(
+            'Delete this daily log? Attendance will remain.'
+        );
+
+
+    if (!okay) {
+        return;
+    }
+
+
+    try {
+
+        const {
+            error
+        } =
+            await supabaseClient
+                .from('entries')
+                .delete()
+                .eq(
+                    'id',
+                    id
+                )
+                .eq(
+                    'user_id',
+                    currentUser.id
+                );
+
+
+        if (error) {
+            throw error;
+        }
+
+
+        if (
+            entry.evidencePath
+        ) {
+
+            await deleteEvidence(
+                entry.evidencePath
+            );
+
+        }
+
+
+        entries =
+            entries.filter(
+                item =>
+                    item.id !==
+                    id
+            );
+
+
+        render();
+
+
+        toast(
+            'Daily log deleted.'
+        );
+
+    } catch (error) {
+
+        console.error(
+            error
+        );
+
+
+        toast(
+            'Unable to delete log.'
+        );
+
+    }
+}
+
+
+
+// 
+// VIEW ENTRY
+// 
+
+function openEntryDetail(id) {
+
+    const entry =
+        entries.find(
+            item =>
+                item.id ===
+                id
+        );
+
+
+    if (!entry) {
+        return;
+    }
+
+
+    $('detailTitle').textContent =
+        entry.task;
+
+
+    $('detailContent').innerHTML =
+        `
+        <p>
+            <strong>Date:</strong>
+            ${formatDate(entry.date)}
+        </p>
+
+        <p>
+            <strong>Time:</strong>
+            ${formatTime(entry.timeIn)}
+            –
+            ${formatTime(entry.timeOut)}
+        </p>
+
+        <p>
+            <strong>Break:</strong>
+            ${entry.breakMinutes} minutes
+        </p>
+
+        <p>
+            <strong>Rendered:</strong>
+            ${entry.hours.toFixed(2)} hours
+        </p>
+
+        <hr>
+
+        <p>
+            ${escapeHTML(entry.description)}
+        </p>
+
+        ${entry.evidenceUrl
+            ?
+            `
+                <img
+                    class="detail-photo"
+                    src="${entry.evidenceUrl}"
+                    alt="Photo evidence"
+                >
+                `
+            :
+            `
+                <p class="muted">
+                    No photo evidence.
+                </p>
+                `
+        }
+        `;
+
+
+    $('detailDialog')
+        .showModal();
+}
+
+
+
+$('closeDetails')
+    ?.addEventListener(
+        'click',
+        () => {
+
+            $('detailDialog')
+                .close();
+
+        }
+    );
+
+
+
+// 
+// FILTER DAILY LOGS
+// 
+
+function getFilteredEntries() {
+
+    const search =
+        $('search')
+            ?.value
+            .trim()
+            .toLowerCase() ||
+        '';
+
+
+    const from =
+        $('filterDateFrom')
+            ?.value ||
+        '';
+
+
+    const to =
+        $('filterDateTo')
+            ?.value ||
+        '';
+
+
+    const sort =
+        $('entrySort')
+            ?.value ||
+        'newest';
+
+
+    let list =
+        entries.filter(
+            entry => {
+
+                const text =
+                    `${entry.task} ${entry.description}`
+                        .toLowerCase();
+
+
+                if (
+                    search &&
+                    !text.includes(
+                        search
+                    )
+                ) {
+                    return false;
+                }
+
+
+                if (
+                    from &&
+                    entry.date <
+                    from
+                ) {
+                    return false;
+                }
+
+
+                if (
+                    to &&
+                    entry.date >
+                    to
+                ) {
+                    return false;
+                }
+
+
+                return true;
+
+            }
+        );
+
+
+    list =
+        [...list];
+
+
+    if (
+        sort ===
+        'oldest'
+    ) {
+
+        list.sort(
+            (a, b) =>
+                a.date.localeCompare(
+                    b.date
+                )
+        );
+
+    } else if (
+        sort ===
+        'hours-high'
+    ) {
+
+        list.sort(
+            (a, b) =>
+                b.hours -
+                a.hours
+        );
+
+    } else if (
+        sort ===
+        'hours-low'
+    ) {
+
+        list.sort(
+            (a, b) =>
+                a.hours -
+                b.hours
+        );
+
+    } else {
+
+        list.sort(
+            (a, b) =>
+                b.date.localeCompare(
+                    a.date
+                )
+        );
+
+    }
+
+
+    return list;
+}
+
+
+
+// 
+// RENDER DAILY LOGS
+// 
+
+function renderEntries() {
+
+    if (
+        !$('entriesList')
+    ) {
+        return;
+    }
+
+
+    const list =
+        getFilteredEntries();
+
+
+    entriesPageSize =
+        Number(
+            $('entriesPerPage')
+                ?.value
+        ) ||
+        10;
+
+
+    const totalPages =
+        Math.max(
+            1,
+            Math.ceil(
+                list.length /
+                entriesPageSize
+            )
+        );
+
+
+    if (
+        entriesCurrentPage >
+        totalPages
+    ) {
+
+        entriesCurrentPage =
+            totalPages;
+
+    }
+
+
+    const start =
+        (
+            entriesCurrentPage -
+            1
+        ) *
+        entriesPageSize;
+
+
+    const pageEntries =
+        list.slice(
+            start,
+            start +
+            entriesPageSize
+        );
+
+
+    if ($('entriesResultCount')) {
+
+        $('entriesResultCount').textContent =
+            `${list.length} ${list.length === 1
+                ?
+                'entry'
+                :
+                'entries'
+            }`;
+
+    }
+
+
+    if (
+        !pageEntries.length
+    ) {
+
+        $('entriesList').innerHTML =
+            `
+            <div class="empty">
+                No entries found.
+            </div>
+            `;
+
+    } else {
+
+        $('entriesList').innerHTML =
+            pageEntries
+                .map(
+                    entry => `
+                        <article class="entry-card">
+
+                            <div class="entry-top">
+
+                                <div>
+
+                                    <h3>
+                                        ${escapeHTML(entry.task)}
+                                    </h3>
+
+                                    <div class="entry-meta">
+
+                                        ${formatDate(entry.date)}
+
+                                        ·
+
+                                        ${formatTime(entry.timeIn)}
+
+                                        –
+
+                                        ${formatTime(entry.timeOut)}
+
+                                        ·
+
+                                        ${entry.hours.toFixed(2)} hrs
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+
+                            <p class="entry-description">
+                                ${escapeHTML(entry.description)}
+                            </p>
+
+
+                            ${entry.evidenceUrl
+                            ?
+                            `
+                                    <div class="entry-evidence">
+
+                                        <img
+                                            src="${entry.evidenceUrl}"
+                                            alt="Evidence"
+                                        >
+
+                                    </div>
+                                    `
+                            :
+                            ''
+                        }
+
+
+                            <div class="entry-actions">
+
+                                <button
+                                    type="button"
+                                    data-view-entry="${entry.id}"
+                                >
+                                    View
+                                </button>
+
+
+                                <button
+                                    type="button"
+                                    data-edit-entry="${entry.id}"
+                                >
+                                    Edit
+                                </button>
+
+
+                                <button
+                                    type="button"
+                                    class="danger"
+                                    data-delete-entry="${entry.id}"
+                                >
+                                    Delete
+                                </button>
+
+                            </div>
+
+                        </article>
+                    `
+                )
+                .join('');
+
+    }
+
+
+    renderPagination(
+        totalPages
+    );
+}
+
+
+
+// 
+// PAGINATION
+// 
+
+function renderPagination(
+    totalPages
+) {
+
+    if (
+        !$('entryPagination')
+    ) {
+        return;
+    }
+
+
+    if (
+        totalPages <=
+        1
+    ) {
+
+        $('entryPagination').innerHTML =
+            '';
+
+        return;
+    }
+
+
+    let html =
+        `
+        <button
+            type="button"
+            data-page-number="${entriesCurrentPage - 1}"
+            ${entriesCurrentPage === 1 ? 'disabled' : ''}
+        >
+            ‹
+        </button>
+        `;
+
+
+    for (
+        let page = 1;
+        page <= totalPages;
+        page++
+    ) {
+
+        html += `
+            <button
+                type="button"
+                data-page-number="${page}"
+                class="${page === entriesCurrentPage ? 'active' : ''}"
+            >
+                ${page}
+            </button>
+        `;
+
+    }
+
+
+    html += `
+        <button
+            type="button"
+            data-page-number="${entriesCurrentPage + 1}"
+            ${entriesCurrentPage === totalPages ? 'disabled' : ''}
+        >
+            ›
+        </button>
+    `;
+
+
+    $('entryPagination').innerHTML =
+        html;
+}
+
+
+
+// 
+// GLOBAL CLICKS
+// 
+
+document.addEventListener(
+    'click',
+    event => {
+
+        const view =
+            event.target.closest(
+                '[data-view-entry]'
+            );
+
+
+        if (view) {
+
+            openEntryDetail(
+                view.dataset
+                    .viewEntry
+            );
+
+            return;
+        }
+
+
+        const edit =
+            event.target.closest(
+                '[data-edit-entry]'
+            );
+
+
+        if (edit) {
+
+            const entry =
+                entries.find(
+                    item =>
+                        item.id ===
+                        edit.dataset
+                            .editEntry
+                );
+
+
+            if (entry) {
+
+                openEntryForm(
+                    entry
+                );
+
+            }
+
+
+            return;
+        }
+
+
+        const remove =
+            event.target.closest(
+                '[data-delete-entry]'
+            );
+
+
+        if (remove) {
+
+            deleteEntry(
+                remove.dataset
+                    .deleteEntry
+            );
+
+            return;
+        }
+
+
+        const pagination =
+            event.target.closest(
+                '[data-page-number]'
+            );
+
+
+        if (
+            pagination &&
+            !pagination.disabled
+        ) {
+
+            entriesCurrentPage =
+                Number(
+                    pagination.dataset
+                        .pageNumber
+                );
+
+
+            renderEntries();
+
+
+            return;
+        }
+
+
+        const calendarDay =
+            event.target.closest(
+                '[data-calendar-date]'
+            );
+
+
+        if (
+            calendarDay
+        ) {
+
+            openCalendarDay(
+                calendarDay.dataset
+                    .calendarDate
+            );
+
+        }
+
+    }
+);
+
+
+
+// 
+// ENTRY FILTER EVENTS
+// 
+
+[
+    'search',
+    'filterDateFrom',
+    'filterDateTo',
+    'entrySort',
+    'entriesPerPage'
+].forEach(
+    id => {
+
+        $(id)
+            ?.addEventListener(
+                'input',
+                () => {
+
+                    entriesCurrentPage =
+                        1;
+
+
+                    renderEntries();
+
+                }
+            );
+
+
+        $(id)
+            ?.addEventListener(
+                'change',
+                () => {
+
+                    entriesCurrentPage =
+                        1;
+
+
+                    renderEntries();
+
+                }
+            );
+
+    }
+);
+
+
+
+$('clearEntryFilters')
+    ?.addEventListener(
+        'click',
+        () => {
+
+            $('search').value =
+                '';
+
+
+            $('filterDateFrom').value =
+                '';
+
+
+            $('filterDateTo').value =
+                '';
+
+
+            $('entrySort').value =
+                'newest';
+
+
+            entriesCurrentPage =
+                1;
+
+
+            renderEntries();
+
+        }
+    );
+
+
+
+// 
+// DASHBOARD
+// 
+
+function renderDashboard() {
+
+    const totalHours =
         entries.reduce(
-            (sum, entry) =>
+            (
+                sum,
+                entry
+            ) =>
                 sum +
-                Number(entry.hours || 0),
+                Number(
+                    entry.hours ||
+                    0
+                ),
             0
         );
 
@@ -1499,184 +4314,442 @@ function render() {
     const remaining =
         Math.max(
             0,
-            goal - total
+            goal -
+            totalHours
         );
 
 
     const percentage =
         goal > 0
-            ? Math.min(
+            ?
+            Math.min(
                 100,
-                Math.round(
-                    total /
-                    goal *
-                    100
-                )
+                totalHours /
+                goal *
+                100
             )
-            : 0;
+            :
+            0;
 
 
-    $('renderedHours').textContent =
-        fmt(total);
+    if ($('renderedHours')) {
+
+        $('renderedHours').textContent =
+            totalHours.toFixed(2);
+
+    }
 
 
-    $('requiredHours').textContent =
-        fmt(goal);
+    if ($('remainingHours')) {
+
+        $('remainingHours').textContent =
+            `${remaining.toFixed(2)} hours remaining`;
+
+    }
 
 
-    $('entryCount').textContent =
-        entries.length;
+    if ($('requiredHours')) {
+
+        $('requiredHours').textContent =
+            goal;
+
+    }
 
 
-    $('remainingHours').textContent =
-        `${fmt(remaining)} hours to go`;
+    if ($('entryCount')) {
+
+        $('entryCount').textContent =
+            entries.length;
+
+    }
 
 
-    $('percentage').textContent =
-        `${percentage}%`;
+    if ($('percentage')) {
+
+        $('percentage').textContent =
+            `${percentage.toFixed(1)}%`;
+
+    }
 
 
-    $('goalProgress').value =
-        percentage;
+    if ($('goalProgress')) {
+
+        $('goalProgress').value =
+            percentage;
+
+    }
 
 
-    $('progressRendered').textContent =
-        `${fmt(total)} rendered`;
+    if ($('progressRendered')) {
+
+        $('progressRendered').textContent =
+            `${totalHours.toFixed(2)} rendered`;
+
+    }
 
 
-    $('progressRemaining').textContent =
-        `${fmt(remaining)} remaining`;
+    if ($('progressRemaining')) {
 
+        $('progressRemaining').textContent =
+            `${remaining.toFixed(2)} remaining`;
 
-    renderRecentEntries();
+    }
 
-    renderTodayAttendance();
-
-    renderMonthSummary();
-
-    renderEntries();
-
-    renderCalendar();
-
-    renderAttendanceHistory();
-
-    renderWeeklyReport();
-
-    renderMonthlyReport();
-
-
-    refreshIcons();
-
-}
-
-
-
-function renderRecentEntries() {
-
-    const recent =
-        sortedEntries()
-            .slice(0, 3);
-
-
-    $('recentEntries')
-        .innerHTML =
-        recent.length
-
-            ? recent.map(
-                entry => `
-
-                    <button
-                        class="recent-item"
-                        data-detail="${entry.id}"
-                        type="button"
-                    >
-
-                        <span>
-
-                            <strong>
-                                ${escapeHTML(
-                    entry.task
-                )}
-                            </strong>
-
-                            <small>
-                                ${formatDate(
-                    entry.date
-                )}
-                            </small>
-
-                        </span>
-
-                        <b>
-                            ${fmt(
-                    entry.hours
-                )}h
-                        </b>
-
-                    </button>
-                `
-            ).join('')
-
-            : `
-                <div class="empty">
-                    Your first work day starts here.
-                </div>
-            `;
-
-}
-
-
-
-function renderMonthSummary() {
 
     const month =
-        currentMonth();
+        localDate()
+            .slice(
+                0,
+                7
+            );
 
 
-    $('monthLogCount')
-        .textContent =
-        entries.filter(
-            item =>
-                item.date.startsWith(month)
-        ).length;
+    if ($('monthLogCount')) {
+
+        $('monthLogCount').textContent =
+            entries.filter(
+                item =>
+                    item.date.startsWith(
+                        month
+                    )
+            ).length;
+
+    }
 
 
-    const monthlyAttendance =
+    const monthAttendance =
         attendances.filter(
             item =>
-                item.date.startsWith(month)
+                item.date.startsWith(
+                    month
+                )
         );
 
 
-    $('monthAttendanceCount')
-        .textContent =
-        monthlyAttendance.length;
+    if ($('monthAttendanceCount')) {
+
+        $('monthAttendanceCount').textContent =
+            monthAttendance.length;
+
+    }
 
 
-    $('monthIncompleteCount')
-        .textContent =
-        monthlyAttendance.filter(
-            item =>
-                !item.timeOut
-        ).length;
+    if ($('monthIncompleteCount')) {
 
+        $('monthIncompleteCount').textContent =
+            monthAttendance.filter(
+                item =>
+                    !item.timeOut
+            ).length;
+
+    }
+
+
+    const recent =
+        [...entries]
+            .sort(
+                (a, b) =>
+                    b.date.localeCompare(
+                        a.date
+                    )
+            )
+            .slice(
+                0,
+                4
+            );
+
+
+    if ($('recentEntries')) {
+
+        $('recentEntries').innerHTML =
+            recent.length
+                ?
+                recent
+                    .map(
+                        entry => `
+                            <div class="recent-item">
+
+                                <div>
+
+                                    <strong>
+                                        ${escapeHTML(entry.task)}
+                                    </strong>
+
+                                    <small>
+                                        ${formatShortDate(entry.date)}
+                                    </small>
+
+                                </div>
+
+                                <b>
+                                    ${entry.hours.toFixed(2)} hrs
+                                </b>
+
+                            </div>
+                        `
+                    )
+                    .join('')
+                :
+                `
+                <div class="empty">
+                    No daily logs yet.
+                </div>
+                `;
+
+    }
 }
 
 
-/* =====================================================
-   CALENDAR
-===================================================== */
+
+// 
+// CALENDAR
+// 
+
+function getCalendarState(date) {
+
+    const attendance =
+        attendances.find(
+            item =>
+                item.date ===
+                date
+        );
+
+
+    const entry =
+        entries.find(
+            item =>
+                item.date ===
+                date
+        );
+
+
+    if (
+        attendance &&
+        !attendance.timeOut
+    ) {
+
+        return {
+
+            className:
+                'incomplete',
+
+            text:
+                'Incomplete'
+
+        };
+
+    }
+
+
+    if (
+        attendance &&
+        entry
+    ) {
+
+        return {
+
+            className:
+                'complete',
+
+            text:
+                'Log + Attendance'
+
+        };
+
+    }
+
+
+    if (attendance) {
+
+        return {
+
+            className:
+                'attendance-only',
+
+            text:
+                'Attendance'
+
+        };
+
+    }
+
+
+    if (entry) {
+
+        return {
+
+            className:
+                'log-only',
+
+            text:
+                'Log'
+
+        };
+
+    }
+
+
+    return null;
+}
+
+
+
+function renderCalendar() {
+
+    if (
+        !$('calendarGrid')
+    ) {
+        return;
+    }
+
+
+    const year =
+        calendarDate
+            .getFullYear();
+
+
+    const month =
+        calendarDate
+            .getMonth();
+
+
+    $('calendarTitle').textContent =
+        calendarDate
+            .toLocaleDateString(
+                undefined,
+                {
+                    month:
+                        'long',
+
+                    year:
+                        'numeric'
+                }
+            );
+
+
+    const firstDay =
+        new Date(
+            year,
+            month,
+            1
+        );
+
+
+    const startDate =
+        new Date(
+            year,
+            month,
+            1 -
+            firstDay.getDay()
+        );
+
+
+    let html =
+        '';
+
+
+    for (
+        let i = 0;
+        i < 42;
+        i++
+    ) {
+
+        const date =
+            new Date(
+                startDate
+            );
+
+
+        date.setDate(
+            startDate.getDate() +
+            i
+        );
+
+
+        const dateString =
+            localDate(
+                date
+            );
+
+
+        const outside =
+            date.getMonth() !==
+            month;
+
+
+        const today =
+            dateString ===
+            localDate();
+
+
+        const state =
+            getCalendarState(
+                dateString
+            );
+
+
+        html += `
+            <button
+                type="button"
+                data-calendar-date="${dateString}"
+                class="
+                    calendar-day
+                    ${outside ? 'outside' : ''}
+                    ${today ? 'today' : ''}
+                "
+            >
+
+                <span class="calendar-date-number">
+                    ${date.getDate()}
+                </span>
+
+
+                <div class="calendar-day-status">
+
+                    ${state
+                ?
+                `
+                            <span
+                                class="calendar-status-item ${state.className}"
+                            >
+                                ${state.text}
+                            </span>
+                            `
+                :
+                ''
+            }
+
+                </div>
+
+            </button>
+        `;
+
+    }
+
+
+    $('calendarGrid').innerHTML =
+        html;
+}
+
+
 
 $('calendarPrevious')
-    .addEventListener(
+    ?.addEventListener(
         'click',
         () => {
 
             calendarDate =
                 new Date(
-                    calendarDate.getFullYear(),
-                    calendarDate.getMonth() - 1,
+
+                    calendarDate
+                        .getFullYear(),
+
+                    calendarDate
+                        .getMonth() -
+                    1,
+
                     1
+
                 );
 
 
@@ -1684,18 +4757,26 @@ $('calendarPrevious')
 
         }
     );
+
 
 
 $('calendarNext')
-    .addEventListener(
+    ?.addEventListener(
         'click',
         () => {
 
             calendarDate =
                 new Date(
-                    calendarDate.getFullYear(),
-                    calendarDate.getMonth() + 1,
+
+                    calendarDate
+                        .getFullYear(),
+
+                    calendarDate
+                        .getMonth() +
+                    1,
+
                     1
+
                 );
 
 
@@ -1705,8 +4786,9 @@ $('calendarNext')
     );
 
 
+
 $('calendarToday')
-    .addEventListener(
+    ?.addEventListener(
         'click',
         () => {
 
@@ -1721,1193 +4803,218 @@ $('calendarToday')
 
 
 
-function calendarDayState(date) {
-
-    const attendance =
-        attendanceForDate(date);
-
-
-    const log =
-        entryForDate(date);
-
-
-    if (
-        attendance &&
-        !attendance.timeOut
-    ) {
-
-        return {
-            className: 'incomplete',
-            text: 'Incomplete'
-        };
-
-    }
-
-
-    if (
-        attendance &&
-        log
-    ) {
-
-        return {
-            className: 'complete',
-            text: 'Completed'
-        };
-
-    }
-
-
-    if (attendance) {
-
-        return {
-            className: 'attendance-only',
-            text: 'Attendance'
-        };
-
-    }
-
-
-    if (log) {
-
-        return {
-            className: 'log-only',
-            text: 'Daily log'
-        };
-
-    }
-
-
-    return null;
-
-}
-
-
-
-function renderCalendar() {
-
-    const year =
-        calendarDate.getFullYear();
-
-
-    const month =
-        calendarDate.getMonth();
-
-
-    $('calendarTitle')
-        .textContent =
-        calendarDate
-            .toLocaleDateString(
-                'en-PH',
-                {
-                    month: 'long',
-                    year: 'numeric'
-                }
-            );
-
-
-    const firstDay =
-        new Date(
-            year,
-            month,
-            1
-        );
-
-
-    const gridStart =
-        new Date(
-            year,
-            month,
-            1 - firstDay.getDay()
-        );
-
-
-    let html = '';
-
-
-    for (
-        let index = 0;
-        index < 42;
-        index++
-    ) {
-
-        const date =
-            new Date(gridStart);
-
-
-        date.setDate(
-            gridStart.getDate() +
-            index
-        );
-
-
-        const dateString =
-            localDate(date);
-
-
-        const outside =
-            date.getMonth() !== month;
-
-
-        const today =
-            dateString === localDate();
-
-
-        const state =
-            calendarDayState(
-                dateString
-            );
-
-
-        html += `
-
-            <button
-                class="
-                    calendar-day
-                    ${outside ? 'outside' : ''}
-                    ${today ? 'today' : ''}
-                "
-                data-calendar-date="${dateString}"
-                type="button"
-            >
-
-                <span class="calendar-date-number">
-                    ${date.getDate()}
-                </span>
-
-
-                <div class="calendar-day-status">
-
-                    ${state
-                ? `
-                                <span class="
-                                    calendar-status-item
-                                    ${state.className}
-                                ">
-                                    ${state.text}
-                                </span>
-                            `
-                : ''
-            }
-
-                </div>
-
-            </button>
-        `;
-
-    }
-
-
-    $('calendarGrid')
-        .innerHTML =
-        html;
-
-}
-
-
+// 
+// CALENDAR DAY VIEW
+// 
 
 function openCalendarDay(date) {
 
     const attendance =
-        attendanceForDate(date);
-
-
-    const logs =
-        entries.filter(
+        attendances.find(
             item =>
-                item.date === date
+                item.date ===
+                date
         );
 
 
-    $('calendarDayTitle')
-        .textContent =
-        formatLongDate(date);
+    const entry =
+        entries.find(
+            item =>
+                item.date ===
+                date
+        );
 
 
-    let html = '';
+    $('calendarDayTitle').textContent =
+        formatDate(
+            date
+        );
+
+
+    let html =
+        `
+        <h3>
+            Attendance
+        </h3>
+        `;
 
 
     if (attendance) {
 
         html += `
+            <p>
+                <strong>Time In:</strong>
+                ${formatTime(attendance.timeIn)}
+            </p>
 
-            <h3>
-                Attendance
-            </h3>
+            <p>
+                <strong>Time Out:</strong>
+                ${formatTime(attendance.timeOut)}
+            </p>
+        `;
 
-            <p class="entry-meta">
+    } else {
 
-                Time In:
-                ${formatClockTime(
-            attendance.timeIn
-        )}
-
-                <br>
-
-                Time Out:
-                ${formatClockTime(
-            attendance.timeOut
-        )}
-
+        html += `
+            <p class="muted">
+                No attendance recorded.
             </p>
         `;
 
     }
 
 
-    if (logs.length) {
+    html += `
+        <hr>
+
+        <h3>
+            Daily Log
+        </h3>
+    `;
+
+
+    if (!entry) {
 
         html += `
-
-            <h3>
-                Daily Logs
-            </h3>
+            <p class="muted">
+                No daily log for this date.
+            </p>
         `;
 
+    } else {
 
-        html += logs.map(
-            entry => `
+        html += `
+            <article class="calendar-log-detail">
 
-                <div class="report-preview-item">
+                <strong>
+                    ${escapeHTML(entry.task)}
+                </strong>
 
-                    <strong>
-                        ${escapeHTML(
-                entry.task
-            )}
-                    </strong>
+                <p>
+                    ${escapeHTML(entry.description)}
+                </p>
 
-                    <span>
-                        ${fmt(
-                entry.hours
-            )} hours
-                    </span>
+                <small>
+                    ${entry.hours.toFixed(2)} hours
+                </small>
 
-                    <span>
-                        ${escapeHTML(
-                entry.description
-            )}
-                    </span>
+                ${entry.evidenceUrl
+                ?
+                `
+                        <img
+                            class="detail-photo"
+                            src="${entry.evidenceUrl}"
+                            alt="Photo evidence"
+                        >
+                        `
+                :
+                ''
+            }
 
-                </div>
-            `
-        ).join('');
-
-    }
-
-
-    if (!attendance && !logs.length) {
-
-        html = `
-
-            <div class="empty">
-                No attendance or daily log
-                recorded for this date.
-            </div>
+            </article>
         `;
 
     }
 
 
-    $('calendarDayContent')
-        .innerHTML =
+    $('calendarDayContent').innerHTML =
         html;
 
 
     $('calendarDayDialog')
         .showModal();
-
 }
 
 
 
 $('closeCalendarDay')
-    .addEventListener(
-        'click',
-        () =>
-            $('calendarDayDialog')
-                .close()
-    );
-
-
-/* =====================================================
-   DAILY LOG FILTER / PAGINATION
-===================================================== */
-
-function getFilteredEntries() {
-
-    const query =
-        $('search')
-            .value
-            .trim()
-            .toLowerCase();
-
-
-    const from =
-        $('filterDateFrom').value;
-
-
-    const to =
-        $('filterDateTo').value;
-
-
-    const sort =
-        $('entrySort').value;
-
-
-    let filtered =
-        entries.filter(entry => {
-
-            const text =
-                [
-                    entry.date,
-                    entry.task,
-                    entry.description
-                ]
-                    .join(' ')
-                    .toLowerCase();
-
-
-            return (
-
-                (
-                    !query ||
-                    text.includes(query)
-                )
-
-                &&
-
-                (
-                    !from ||
-                    entry.date >= from
-                )
-
-                &&
-
-                (
-                    !to ||
-                    entry.date <= to
-                )
-
-            );
-
-        });
-
-
-    filtered.sort((a, b) => {
-
-        switch (sort) {
-
-            case 'oldest':
-
-                return a.date.localeCompare(
-                    b.date
-                );
-
-
-            case 'hours-high':
-
-                return Number(b.hours) -
-                    Number(a.hours);
-
-
-            case 'hours-low':
-
-                return Number(a.hours) -
-                    Number(b.hours);
-
-
-            case 'task-az':
-
-                return a.task.localeCompare(
-                    b.task
-                );
-
-
-            default:
-
-                return b.date.localeCompare(
-                    a.date
-                );
-
-        }
-
-    });
-
-
-    return filtered;
-
-}
-
-
-
-function renderEntries() {
-
-    entriesPageSize =
-        Number(
-            $('entriesPerPage').value
-        ) || 10;
-
-
-    const filtered =
-        getFilteredEntries();
-
-
-    $('entriesResultCount')
-        .textContent =
-        `${filtered.length} ${filtered.length === 1
-            ? 'entry'
-            : 'entries'
-        }`;
-
-
-    const totalPages =
-        Math.max(
-            1,
-            Math.ceil(
-                filtered.length /
-                entriesPageSize
-            )
-        );
-
-
-    entriesCurrentPage =
-        Math.min(
-            Math.max(
-                1,
-                entriesCurrentPage
-            ),
-            totalPages
-        );
-
-
-    const start =
-        (
-            entriesCurrentPage - 1
-        ) *
-        entriesPageSize;
-
-
-    const selected =
-        filtered.slice(
-            start,
-            start +
-            entriesPageSize
-        );
-
-
-    if (!selected.length) {
-
-        $('entriesList')
-            .innerHTML = `
-
-                <div class="empty">
-                    ${entries.length
-                ? 'No entries match your filters.'
-                : 'No daily logs yet.'
-            }
-                </div>
-            `;
-
-    } else {
-
-        $('entriesList')
-            .innerHTML =
-            selected.map(
-                entry => `
-
-                    <article class="entry-card">
-
-                        <div class="entry-top">
-
-                            <div>
-
-                                <h3>
-                                    ${escapeHTML(
-                    entry.task
-                )}
-                                </h3>
-
-                                <span class="entry-meta">
-
-                                    ${formatDate(
-                    entry.date
-                )}
-
-                                    ·
-
-                                    ${formatClockTime(
-                    entry.timeIn
-                )}
-
-                                    –
-
-                                    ${formatClockTime(
-                    entry.timeOut
-                )}
-
-                                    ·
-
-                                    ${fmt(
-                    entry.hours
-                )} hours
-
-                                </span>
-
-                            </div>
-
-                            ${entry.image
-                        ? '📷'
-                        : ''
-                    }
-
-                        </div>
-
-
-                        <p class="entry-description">
-                            ${escapeHTML(
-                        entry.description
-                    )}
-                        </p>
-
-
-                        <div class="entry-actions">
-
-                            <button
-                                data-detail="${entry.id}"
-                                type="button"
-                            >
-                                View Details
-                            </button>
-
-                            <button
-                                data-edit="${entry.id}"
-                                type="button"
-                            >
-                                Edit
-                            </button>
-
-                        </div>
-
-                    </article>
-                `
-            ).join('');
-
-    }
-
-
-    renderPagination(
-        filtered.length,
-        totalPages
-    );
-
-}
-
-
-
-function renderPagination(
-    totalEntries,
-    totalPages
-) {
-
-    if (
-        totalEntries === 0 ||
-        totalPages <= 1
-    ) {
-
-        $('entryPagination')
-            .innerHTML =
-            '';
-
-        return;
-
-    }
-
-
-    let html = `
-
-        <button
-            data-page-number="${entriesCurrentPage - 1
-        }"
-            ${entriesCurrentPage === 1
-            ? 'disabled'
-            : ''
-        }
-        >
-            Previous
-        </button>
-    `;
-
-
-    const pages = [];
-
-
-    for (
-        let page = 1;
-        page <= totalPages;
-        page++
-    ) {
-
-        if (
-            page === 1 ||
-            page === totalPages ||
-            Math.abs(
-                page -
-                entriesCurrentPage
-            ) <= 1
-        ) {
-
-            pages.push(page);
-
-        }
-
-    }
-
-
-    let previous = 0;
-
-
-    pages.forEach(page => {
-
-        if (
-            previous &&
-            page - previous > 1
-        ) {
-
-            html += `
-                <span class="pagination-info">
-                    …
-                </span>
-            `;
-
-        }
-
-
-        html += `
-
-            <button
-                data-page-number="${page}"
-                class="${page ===
-                entriesCurrentPage
-                ? 'active'
-                : ''
-            }"
-            >
-                ${page}
-            </button>
-        `;
-
-
-        previous = page;
-
-    });
-
-
-    html += `
-
-        <button
-            data-page-number="${entriesCurrentPage + 1
-        }"
-            ${entriesCurrentPage === totalPages
-            ? 'disabled'
-            : ''
-        }
-        >
-            Next
-        </button>
-    `;
-
-
-    $('entryPagination')
-        .innerHTML =
-        html;
-
-}
-
-
-
-function resetEntryPage() {
-
-    entriesCurrentPage = 1;
-
-    renderEntries();
-
-}
-
-
-
-[
-    'filterDateFrom',
-    'filterDateTo',
-    'entrySort',
-    'entriesPerPage'
-]
-    .forEach(id => {
-
-        $(id).addEventListener(
-            'change',
-            resetEntryPage
-        );
-
-    });
-
-
-$('search')
-    .addEventListener(
-        'input',
-        resetEntryPage
-    );
-
-
-$('clearEntryFilters')
-    .addEventListener(
+    ?.addEventListener(
         'click',
         () => {
 
-            $('search').value = '';
-
-            $('filterDateFrom').value = '';
-
-            $('filterDateTo').value = '';
-
-            $('entrySort').value =
-                'newest';
-
-            $('entriesPerPage').value =
-                '10';
-
-            entriesCurrentPage = 1;
-
-            renderEntries();
-
-        }
-    );
-
-
-/* =====================================================
-   ENTRY FORM + DRAFT
-===================================================== */
-
-function openForm(id = null) {
-
-    const entry =
-        entries.find(
-            item => item.id === id
-        );
-
-
-    editingId =
-        entry?.id || null;
-
-
-    $('entryForm').reset();
-
-
-    $('formError').textContent = '';
-
-    $('draftStatus').textContent = '';
-
-
-    $('formTitle').textContent =
-        entry
-            ? 'Edit Entry'
-            : 'New Entry';
-
-
-    if (entry) {
-
-        $('entryDate').value =
-            entry.date;
-
-
-        $('task').value =
-            entry.task;
-
-
-        $('timeIn').value =
-            entry.timeIn;
-
-
-        $('timeOut').value =
-            entry.timeOut;
-
-
-        $('breakMinutes').value =
-            entry.breakMinutes;
-
-
-        $('description').value =
-            entry.description;
-
-
-        $('attachmentNote').textContent =
-            entry.image
-                ? 'Existing photo will be kept unless replaced.'
-                : '';
-
-    } else if (entryDraft) {
-
-        $('entryDate').value =
-            entryDraft.date || localDate();
-
-
-        $('task').value =
-            entryDraft.task || '';
-
-
-        $('timeIn').value =
-            entryDraft.timeIn || '';
-
-
-        $('timeOut').value =
-            entryDraft.timeOut || '';
-
-
-        $('breakMinutes').value =
-            entryDraft.breakMinutes ?? 60;
-
-
-        $('description').value =
-            entryDraft.description || '';
-
-
-        $('draftStatus').textContent =
-            'Draft restored.';
-
-    } else {
-
-        const attendance =
-            attendanceForDate(
-                localDate()
-            );
-
-
-        $('entryDate').value =
-            localDate();
-
-
-        $('timeIn').value =
-            attendance?.timeIn || '';
-
-
-        $('timeOut').value =
-            attendance?.timeOut || '';
-
-
-        $('breakMinutes').value =
-            60;
-
-    }
-
-
-    updatePreview();
-
-
-    $('entryDialog')
-        .showModal();
-
-}
-
-
-
-function getDraftFromForm() {
-
-    return {
-
-        date:
-            $('entryDate').value,
-
-        task:
-            $('task').value,
-
-        timeIn:
-            $('timeIn').value,
-
-        timeOut:
-            $('timeOut').value,
-
-        breakMinutes:
-            Number(
-                $('breakMinutes').value
-            ),
-
-        description:
-            $('description').value
-
-    };
-
-}
-
-
-
-$('saveDraftButton')
-    .addEventListener(
-        'click',
-        async () => {
-
-            entryDraft =
-                getDraftFromForm();
-
-
-            await saveData();
-
-
-            $('draftStatus')
-                .textContent =
-                'Draft saved.';
-
-
-            toast(
-                'Draft saved.'
-            );
-
-        }
-    );
-
-
-/* IMAGE COMPRESSION */
-
-function compressImage(file) {
-
-    return new Promise((resolve, reject) => {
-
-        const reader =
-            new FileReader();
-
-
-        reader.onload = () => {
-
-            const image =
-                new Image();
-
-
-            image.onload = () => {
-
-                const maxSize = 1200;
-
-
-                const scale =
-                    Math.min(
-                        1,
-                        maxSize /
-                        Math.max(
-                            image.width,
-                            image.height
-                        )
-                    );
-
-
-                const canvas =
-                    document.createElement(
-                        'canvas'
-                    );
-
-
-                canvas.width =
-                    Math.round(
-                        image.width *
-                        scale
-                    );
-
-
-                canvas.height =
-                    Math.round(
-                        image.height *
-                        scale
-                    );
-
-
-                canvas
-                    .getContext('2d')
-                    .drawImage(
-                        image,
-                        0,
-                        0,
-                        canvas.width,
-                        canvas.height
-                    );
-
-
-                resolve(
-                    canvas.toDataURL(
-                        'image/jpeg',
-                        .78
-                    )
-                );
-
-            };
-
-
-            image.onerror =
-                reject;
-
-
-            image.src =
-                reader.result;
-
-        };
-
-
-        reader.onerror =
-            reject;
-
-
-        reader.readAsDataURL(
-            file
-        );
-
-    });
-
-}
-
-
-
-$('entryForm')
-    .addEventListener(
-        'submit',
-        async event => {
-
-            event.preventDefault();
-
-
-            const hours =
-                calculateHours(
-                    $('timeIn').value,
-                    $('timeOut').value,
-                    $('breakMinutes').value
-                );
-
-
-            if (hours === null) {
-
-                $('formError')
-                    .textContent =
-                    'Check your time in, time out, and break.';
-
-                return;
-
-            }
-
-
-            const task =
-                $('task')
-                    .value
-                    .trim();
-
-
-            const description =
-                $('description')
-                    .value
-                    .trim();
-
-
-            if (!task || !description) {
-
-                $('formError')
-                    .textContent =
-                    'Enter a task and description.';
-
-                return;
-
-            }
-
-
-            const oldEntry =
-                entries.find(
-                    item =>
-                        item.id === editingId
-                );
-
-
-            const file =
-                $('evidence').files[0];
-
-
-            let image =
-                oldEntry?.image || null;
-
-
-            if (file) {
-
-                image =
-                    await compressImage(
-                        file
-                    );
-
-            }
-
-
-            const record = {
-
-                id:
-                    oldEntry?.id ||
-                    crypto.randomUUID(),
-
-                createdAt:
-                    oldEntry?.createdAt ||
-                    Date.now(),
-
-                date:
-                    $('entryDate').value,
-
-                task,
-
-                description,
-
-                timeIn:
-                    $('timeIn').value,
-
-                timeOut:
-                    $('timeOut').value,
-
-                breakMinutes:
-                    Number(
-                        $('breakMinutes').value
-                    ),
-
-                hours,
-
-                image
-            };
-
-
-            if (oldEntry) {
-
-                entries =
-                    entries.map(
-                        item =>
-                            item.id ===
-                                oldEntry.id
-
-                                ? record
-
-                                : item
-                    );
-
-            } else {
-
-                entries.unshift(
-                    record
-                );
-
-            }
-
-
-            entryDraft = null;
-
-
-            await saveData();
-
-
-            $('entryDialog')
+            $('calendarDayDialog')
                 .close();
 
+        }
+    );
 
-            render();
 
 
-            toast(
-                oldEntry
-                    ? 'Entry updated.'
-                    : 'Entry saved.'
+// 
+// REPORT TABS
+// 
+
+document
+    .querySelectorAll(
+        '[data-report-tab]'
+    )
+    .forEach(
+        button => {
+
+            button.addEventListener(
+                'click',
+                () => {
+
+                    document
+                        .querySelectorAll(
+                            '.report-tab'
+                        )
+                        .forEach(
+                            tab =>
+                                tab.classList.remove(
+                                    'active'
+                                )
+                        );
+
+
+                    document
+                        .querySelectorAll(
+                            '.report-section'
+                        )
+                        .forEach(
+                            section =>
+                                section.classList.remove(
+                                    'active'
+                                )
+                        );
+
+
+                    button.classList.add(
+                        'active'
+                    );
+
+
+                    if (
+                        button.dataset.reportTab ===
+                        'weekly'
+                    ) {
+
+                        $('weeklyReportSection')
+                            .classList
+                            .add(
+                                'active'
+                            );
+
+
+                        renderWeeklyReport();
+
+                    } else {
+
+                        $('monthlyReportSection')
+                            .classList
+                            .add(
+                                'active'
+                            );
+
+
+                        renderMonthlyReport();
+
+                    }
+
+
+                    createIcons();
+
+                }
             );
 
         }
@@ -2915,492 +5022,592 @@ $('entryForm')
 
 
 
-function openDetail(id) {
+// 
+// WEEK HELPERS
+// 
 
-    const entry =
-        entries.find(
-            item => item.id === id
-        );
-
-
-    if (!entry) {
-        return;
-    }
-
-
-    $('detailTitle')
-        .textContent =
-        entry.task;
-
-
-    $('detailContent')
-        .innerHTML = `
-
-            <p class="entry-meta">
-
-                ${formatDate(
-            entry.date
-        )}
-
-                ·
-
-                ${formatClockTime(
-            entry.timeIn
-        )}
-
-                –
-
-                ${formatClockTime(
-            entry.timeOut
-        )}
-
-                ·
-
-                ${fmt(
-            entry.hours
-        )} hours
-
-            </p>
-
-
-            <h3>
-                Tasks Accomplished
-            </h3>
-
-            <p class="detail-copy">
-                ${escapeHTML(
-            entry.description
-        )}
-            </p>
-
-
-            <h3>
-                Photo Evidence
-            </h3>
-
-            ${entry.image
-            ? `
-                        <img
-                            class="detail-photo"
-                            src="${entry.image}"
-                            alt="Photo evidence"
-                        >
-                    `
-            : `
-                        <p class="muted">
-                            No photo attached.
-                        </p>
-                    `
-        }
-
-
-            <div class="entry-actions">
-
-                <button
-                    data-edit="${entry.id}"
-                    type="button"
-                >
-                    Edit
-                </button>
-
-                <button
-                    class="danger"
-                    data-delete="${entry.id}"
-                    type="button"
-                >
-                    Delete
-                </button>
-
-            </div>
-        `;
-
-
-    $('detailDialog')
-        .showModal();
-
-}
-
-
-
-
-async function deleteEntry(id) {
-
-    if (!confirm('Delete this entry permanently?')) {
-        return;
-    }
-
-    const entryToDelete =
-        entries.find(
-            entry => entry.id === id
-        );
-
-    if (!entryToDelete) {
-        return;
-    }
-
-    // Remove the daily log
-    entries =
-        entries.filter(
-            entry => entry.id !== id
-        );
-
-    // Remove attendance from the same date
-    attendances =
-        attendances.filter(
-            attendance =>
-                attendance.date !== entryToDelete.date
-        );
-
-    await saveData();
-
-    $('detailDialog').close();
-
-    render();
-
-    toast(
-        'Entry and attendance deleted.'
-    );
-}
-
-
-
-
-$('closeForm')
-    .addEventListener(
-        'click',
-        () =>
-            $('entryDialog')
-                .close()
-    );
-
-
-$('cancelForm')
-    .addEventListener(
-        'click',
-        () =>
-            $('entryDialog')
-                .close()
-    );
-
-
-$('closeDetails')
-    .addEventListener(
-        'click',
-        () =>
-            $('detailDialog')
-                .close()
-    );
-
-
-/* =====================================================
-   REPORTS
-===================================================== */
-
-function weekBounds(value) {
+function getWeekBounds(
+    dateString
+) {
 
     const date =
         new Date(
-            `${value ||
-            localDate()
-            }T12:00:00`
+            `${dateString}T00:00:00`
         );
 
 
-    const offset =
-        (
-            date.getDay() +
-            6
-        ) % 7;
+    const day =
+        date.getDay();
 
 
-    date.setDate(
-        date.getDate() -
-        offset
-    );
+    const difference =
+        day === 0
+            ?
+            -6
+            :
+            1 -
+            day;
 
 
     const monday =
-        localDate(date);
+        new Date(
+            date
+        );
 
 
-    date.setDate(
+    monday.setDate(
         date.getDate() +
+        difference
+    );
+
+
+    const sunday =
+        new Date(
+            monday
+        );
+
+
+    sunday.setDate(
+        monday.getDate() +
         6
     );
 
 
-    return [
-        monday,
-        localDate(date)
-    ];
+    return {
 
+        start:
+            localDate(
+                monday
+            ),
+
+        end:
+            localDate(
+                sunday
+            )
+
+    };
 }
 
 
 
-function weekEntries() {
+function getWeeklyReportData() {
 
-    const [start, end] =
-        weekBounds(
-            $('weekDate').value
+    const selected =
+        $('weekDate')?.value ||
+        localDate();
+
+
+    const {
+        start,
+        end
+    } =
+        getWeekBounds(
+            selected
         );
 
 
-    return [...entries]
-        .filter(
-            entry =>
-                entry.date >= start &&
-                entry.date <= end
-        )
-        .sort(
-            (a, b) =>
-                a.date.localeCompare(
-                    b.date
+    return {
+
+        start,
+
+        end,
+
+        entries:
+            entries
+                .filter(
+                    entry =>
+                        entry.date >=
+                        start &&
+                        entry.date <=
+                        end
                 )
-        );
+                .sort(
+                    (a, b) =>
+                        a.date.localeCompare(
+                            b.date
+                        )
+                ),
 
+        attendance:
+            attendances
+                .filter(
+                    item =>
+                        item.date >=
+                        start &&
+                        item.date <=
+                        end
+                )
+
+    };
 }
 
 
 
-function monthEntries(month) {
+function getMonthlyReportData() {
 
-    return [...entries]
-        .filter(
-            entry =>
-                entry.date.startsWith(
-                    month
-                )
-        )
-        .sort(
-            (a, b) =>
-                a.date.localeCompare(
-                    b.date
-                )
-        );
+    const month =
+        $('reportMonth')?.value ||
+        localDate()
+            .slice(
+                0,
+                7
+            );
 
+
+    return {
+
+        month,
+
+        entries:
+            entries
+                .filter(
+                    entry =>
+                        entry.date.startsWith(
+                            month
+                        )
+                )
+                .sort(
+                    (a, b) =>
+                        a.date.localeCompare(
+                            b.date
+                        )
+                ),
+
+        attendance:
+            attendances
+                .filter(
+                    item =>
+                        item.date.startsWith(
+                            month
+                        )
+                )
+
+    };
 }
 
 
 
-function renderReportItems(
-    selected
-) {
+// 
+// REPORT TABLE
+// 
 
-    if (!selected.length) {
+function createReportTable(list) {
 
-        return `
-            <div class="empty">
-                No entries found.
+    if (!list.length) {
+        return '';
+    }
+
+
+    return `
+        <div class="report-table-row header">
+
+            <div class="report-table-cell">
+                Date
             </div>
-        `;
+
+            <div class="report-table-cell">
+                Accomplishment
+            </div>
+
+            <div class="report-table-cell">
+                Time In
+            </div>
+
+            <div class="report-table-cell">
+                Time Out
+            </div>
+
+            <div class="report-table-cell">
+                Break
+            </div>
+
+            <div class="report-table-cell">
+                Hours
+            </div>
+
+            <div class="report-table-cell">
+                Proof
+            </div>
+
+        </div>
+
+        ${list
+            .map(
+                entry => `
+                        <div class="report-table-row">
+
+                            <div class="report-table-cell">
+                                ${formatShortDate(entry.date)}
+                            </div>
+
+
+                            <div class="report-table-cell">
+
+                                <span class="report-task-title">
+                                    ${escapeHTML(entry.task)}
+                                </span>
+
+                                <span class="report-task-description">
+                                    ${escapeHTML(entry.description)}
+                                </span>
+
+                            </div>
+
+
+                            <div class="report-table-cell">
+                                ${formatTime(entry.timeIn)}
+                            </div>
+
+
+                            <div class="report-table-cell">
+                                ${formatTime(entry.timeOut)}
+                            </div>
+
+
+                            <div class="report-table-cell">
+                                ${entry.breakMinutes} min
+                            </div>
+
+
+                            <div class="report-table-cell">
+
+                                <strong>
+                                    ${entry.hours.toFixed(2)}
+                                </strong>
+
+                            </div>
+
+
+                            <div class="report-table-cell">
+
+                                ${entry.evidenceUrl
+                        ?
+                        `
+                                        <button
+                                            class="report-proof-thumbnail"
+                                            type="button"
+                                            data-view-entry="${entry.id}"
+                                        >
+
+                                            <img
+                                                src="${entry.evidenceUrl}"
+                                                alt="Evidence"
+                                            >
+
+                                        </button>
+                                        `
+                        :
+                        `
+                                        <span class="report-no-proof">
+                                            —
+                                        </span>
+                                        `
+                    }
+
+                            </div>
+
+                        </div>
+                    `
+            )
+            .join('')
+        }
+    `;
+}
+
+
+
+// 
+// WEEKLY REPORT
+// 
+
+function renderWeeklyReport() {
+
+    if (
+        !$('weeklyReportTable')
+    ) {
+        return;
+    }
+
+
+    if (
+        !$('weekDate').value
+    ) {
+
+        $('weekDate').value =
+            localDate();
 
     }
 
 
-    return selected.map(
-        entry => `
-
-            <article class="report-preview-item">
-
-                <strong>
-                    ${formatDate(
-            entry.date
-        )}
-                    ·
-                    ${escapeHTML(
-            entry.task
-        )}
-                </strong>
-
-                <span>
-                    ${formatClockTime(
-            entry.timeIn
-        )}
-                    –
-                    ${formatClockTime(
-            entry.timeOut
-        )}
-                    ·
-                    ${fmt(
-            entry.hours
-        )} hours
-                </span>
-
-                <span>
-                    ${escapeHTML(
-            entry.description
-        )}
-                </span>
-
-            </article>
-        `
-    ).join('');
-
-}
-
-
-
-function renderWeeklyReport() {
-
-    const bounds =
-        weekBounds(
-            $('weekDate').value
-        );
-
-
-    $('weekRange')
-        .textContent =
-        `${formatDate(
-            bounds[0]
-        )} – ${formatDate(
-            bounds[1]
-        )}`;
-
-
-    $('reportPreview')
-        .innerHTML =
-        renderReportItems(
-            weekEntries()
-        );
-
-}
-
-
-
-function renderMonthlyReport() {
-
-    const selected =
-        monthEntries(
-            $('reportMonth').value
-        );
+    const report =
+        getWeeklyReportData();
 
 
     const total =
-        selected.reduce(
-            (sum, entry) =>
+        report.entries.reduce(
+            (
+                sum,
+                item
+            ) =>
                 sum +
-                Number(entry.hours || 0),
+                item.hours,
             0
         );
 
 
-    $('monthlyReportTotal')
-        .textContent =
-        `${fmt(total)} hours`;
+    const days =
+        report.entries.length;
 
 
-    $('monthlyReportPreview')
-        .innerHTML =
-        renderReportItems(
-            selected
+    const average =
+        days
+            ?
+            total /
+            days
+            :
+            0;
+
+
+    const attendanceDays =
+        report.attendance.filter(
+            item =>
+                item.timeIn &&
+                item.timeOut
+        ).length;
+
+
+    $('weekRange').textContent =
+        `${formatDate(report.start)} – ${formatDate(report.end)}`;
+
+
+    $('weeklyTotalHours').textContent =
+        total.toFixed(2);
+
+
+    $('weeklyLoggedDays').textContent =
+        days;
+
+
+    $('weeklyAverageHours').textContent =
+        average.toFixed(2);
+
+
+    $('weeklyAttendanceDays').textContent =
+        attendanceDays;
+
+
+    $('weeklyStudentName').textContent =
+        studentName ||
+        'Student';
+
+
+    const hasEntries =
+        report.entries.length >
+        0;
+
+
+    $('weeklyReportEmpty').hidden =
+        hasEntries;
+
+
+    $('weeklyReportTable').hidden =
+        !hasEntries;
+
+
+    $('weeklyReportTable').innerHTML =
+        createReportTable(
+            report.entries
+        );
+}
+
+
+
+// 
+// MONTHLY REPORT
+// 
+
+function renderMonthlyReport() {
+
+    if (
+        !$('monthlyReportTable')
+    ) {
+        return;
+    }
+
+
+    if (
+        !$('reportMonth').value
+    ) {
+
+        $('reportMonth').value =
+            localDate()
+                .slice(
+                    0,
+                    7
+                );
+
+    }
+
+
+    const report =
+        getMonthlyReportData();
+
+
+    const total =
+        report.entries.reduce(
+            (
+                sum,
+                item
+            ) =>
+                sum +
+                item.hours,
+            0
         );
 
+
+    const days =
+        report.entries.length;
+
+
+    const average =
+        days
+            ?
+            total /
+            days
+            :
+            0;
+
+
+    const attendanceDays =
+        report.attendance.filter(
+            item =>
+                item.timeIn &&
+                item.timeOut
+        ).length;
+
+
+    const monthDate =
+        new Date(
+            `${report.month}-01T00:00:00`
+        );
+
+
+    $('monthlyPeriodLabel').textContent =
+        monthDate.toLocaleDateString(
+            undefined,
+            {
+                month:
+                    'long',
+
+                year:
+                    'numeric'
+            }
+        );
+
+
+    $('monthlyTotalHours').textContent =
+        total.toFixed(2);
+
+
+    $('monthlyLoggedDays').textContent =
+        days;
+
+
+    $('monthlyAverageHours').textContent =
+        average.toFixed(2);
+
+
+    $('monthlyAttendanceDays').textContent =
+        attendanceDays;
+
+
+    $('monthlyStudentName').textContent =
+        studentName ||
+        'Student';
+
+
+    const overall =
+        entries.reduce(
+            (
+                sum,
+                entry
+            ) =>
+                sum +
+                entry.hours,
+            0
+        );
+
+
+    const percentage =
+        goal > 0
+            ?
+            Math.min(
+                100,
+                overall /
+                goal *
+                100
+            )
+            :
+            0;
+
+
+    $('monthlyProgressText').textContent =
+        `${overall.toFixed(2)} of ${goal} hours`;
+
+
+    $('monthlyProgressPercent').textContent =
+        `${percentage.toFixed(1)}%`;
+
+
+    $('monthlyProgressBar').value =
+        percentage;
+
+
+    const hasEntries =
+        report.entries.length >
+        0;
+
+
+    $('monthlyReportEmpty').hidden =
+        hasEntries;
+
+
+    $('monthlyReportTable').hidden =
+        !hasEntries;
+
+
+    $('monthlyReportTable').innerHTML =
+        createReportTable(
+            report.entries
+        );
 }
 
 
 
 $('weekDate')
-    .addEventListener(
+    ?.addEventListener(
         'change',
         renderWeeklyReport
     );
 
 
+
 $('reportMonth')
-    .addEventListener(
+    ?.addEventListener(
         'change',
         renderMonthlyReport
     );
 
 
-document
-    .querySelectorAll(
-        '.report-tab'
-    )
-    .forEach(button => {
 
-        button.addEventListener(
-            'click',
-            () => {
+// 
+// CSV EXPORT
+// 
 
-                document
-                    .querySelectorAll(
-                        '.report-tab'
-                    )
-                    .forEach(item =>
-                        item.classList.remove(
-                            'active'
-                        )
-                    );
-
-
-                document
-                    .querySelectorAll(
-                        '.report-section'
-                    )
-                    .forEach(item =>
-                        item.classList.remove(
-                            'active'
-                        )
-                    );
-
-
-                button.classList.add(
-                    'active'
-                );
-
-
-                const tab =
-                    button.dataset.reportTab;
-
-
-                $(
-                    tab === 'weekly'
-
-                        ? 'weeklyReportSection'
-
-                        : 'monthlyReportSection'
-                )
-                    .classList
-                    .add('active');
-
-            }
-        );
-
-    });
-
-
-/* CSV */
-
-function csvEscape(value) {
-
-    return `"${String(
-        value ?? ''
-    ).replace(
-        /"/g,
-        '""'
-    )}"`;
-
-}
-
-
-
-function exportCsv(
-    selected,
-    filename
+function downloadCSV(
+    filename,
+    list
 ) {
-
-    if (!selected.length) {
-
-        toast(
-            'There are no entries to export.'
-        );
-
-        return;
-
-    }
-
 
     const rows = [
 
@@ -3411,10 +5618,11 @@ function exportCsv(
             'Time Out',
             'Break Minutes',
             'Rendered Hours',
-            'Description'
+            'Description',
+            'Evidence'
         ],
 
-        ...selected.map(
+        ...list.map(
             entry => [
 
                 entry.date,
@@ -3429,7 +5637,14 @@ function exportCsv(
 
                 entry.hours,
 
-                entry.description
+                entry.description,
+
+                entry.evidencePath
+                    ?
+                    'Yes'
+                    :
+                    'No'
+
             ]
         )
 
@@ -3438,143 +5653,373 @@ function exportCsv(
 
     const csv =
         rows
-            .map(row =>
-                row
-                    .map(csvEscape)
-                    .join(',')
+            .map(
+                row =>
+                    row
+                        .map(
+                            value =>
+                                `"${String(value ?? '')
+                                    .replaceAll(
+                                        '"',
+                                        '""'
+                                    )}"`
+                        )
+                        .join(',')
             )
             .join('\n');
 
 
     downloadBlob(
+
         new Blob(
-            [csv],
+            [
+                '\uFEFF',
+                csv
+            ],
             {
                 type:
                     'text/csv;charset=utf-8'
             }
         ),
-        filename
-    );
 
+        filename
+
+    );
 }
 
 
 
 $('exportWeeklyCsv')
-    .addEventListener(
+    ?.addEventListener(
         'click',
-        () =>
-            exportCsv(
-                weekEntries(),
-                'OJT_Weekly_Report.csv'
-            )
+        () => {
+
+            const report =
+                getWeeklyReportData();
+
+
+            downloadCSV(
+                `Over-Time-Weekly-${report.start}.csv`,
+                report.entries
+            );
+
+        }
     );
+
 
 
 $('exportMonthlyCsv')
-    .addEventListener(
+    ?.addEventListener(
         'click',
-        () =>
-            exportCsv(
-                monthEntries(
-                    $('reportMonth').value
-                ),
-                'OJT_Monthly_Report.csv'
-            )
+        () => {
+
+            const report =
+                getMonthlyReportData();
+
+
+            downloadCSV(
+                `Over-Time-${report.month}.csv`,
+                report.entries
+            );
+
+        }
     );
 
 
-/* PRINT / PDF */
 
-function printReport(
-    title,
-    selected
+// 
+// WORD EXPORT
+// 
+
+$('exportWordButton')
+    ?.addEventListener(
+        'click',
+        () => {
+
+            const report =
+                getWeeklyReportData();
+
+
+            const total =
+                report.entries.reduce(
+                    (
+                        sum,
+                        item
+                    ) =>
+                        sum +
+                        item.hours,
+                    0
+                );
+
+
+            const rows =
+                report.entries
+                    .map(
+                        entry => `
+                            <tr>
+
+                                <td>
+                                    ${escapeHTML(formatShortDate(entry.date))}
+                                </td>
+
+                                <td>
+                                    <strong>
+                                        ${escapeHTML(entry.task)}
+                                    </strong>
+
+                                    <br>
+
+                                    ${escapeHTML(entry.description)}
+                                </td>
+
+                                <td>
+                                    ${escapeHTML(formatTime(entry.timeIn))}
+                                </td>
+
+                                <td>
+                                    ${escapeHTML(formatTime(entry.timeOut))}
+                                </td>
+
+                                <td>
+                                    ${entry.breakMinutes} min
+                                </td>
+
+                                <td>
+                                    ${entry.hours.toFixed(2)}
+                                </td>
+
+                            </tr>
+                        `
+                    )
+                    .join('');
+
+
+            const html =
+                `
+                <html>
+
+                <head>
+                    <meta charset="UTF-8">
+                </head>
+
+                <body>
+
+                    <h1>
+                        Weekly OJT Accomplishment Report
+                    </h1>
+
+                    <p>
+                        <strong>Student:</strong>
+                        ${escapeHTML(studentName)}
+                    </p>
+
+                    <p>
+                        <strong>Period:</strong>
+                        ${escapeHTML(formatDate(report.start))}
+                        -
+                        ${escapeHTML(formatDate(report.end))}
+                    </p>
+
+                    <p>
+                        <strong>Total:</strong>
+                        ${total.toFixed(2)} hours
+                    </p>
+
+                    <table
+                        border="1"
+                        cellspacing="0"
+                        cellpadding="6"
+                        width="100%"
+                    >
+
+                        <thead>
+
+                            <tr>
+
+                                <th>Date</th>
+                                <th>Accomplishment</th>
+                                <th>Time In</th>
+                                <th>Time Out</th>
+                                <th>Break</th>
+                                <th>Hours</th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody>
+                            ${rows}
+                        </tbody>
+
+                    </table>
+
+                </body>
+
+                </html>
+                `;
+
+
+            downloadBlob(
+
+                new Blob(
+                    [html],
+                    {
+                        type:
+                            'application/msword'
+                    }
+                ),
+
+                `Over-Time-Weekly-${report.start}.doc`
+
+            );
+
+        }
+    );
+
+
+
+// 
+// PRINT / PDF
+// 
+
+function createPrintableTable(
+    list
 ) {
 
-    if (!selected.length) {
+    if (
+        !list.length
+    ) {
 
-        toast(
-            'There are no entries to print.'
-        );
-
-        return;
+        return `
+            <p>
+                No records.
+            </p>
+        `;
 
     }
 
 
-    const total =
-        selected.reduce(
-            (sum, entry) =>
-                sum +
-                Number(entry.hours || 0),
-            0
-        );
+    return `
+        <table>
 
-
-    const rows =
-        selected.map(
-            entry => `
+            <thead>
 
                 <tr>
 
-                    <td>
-                        ${formatDate(
-                entry.date
-            )}
-                    </td>
-
-                    <td>
-                        ${escapeHTML(
-                entry.task
-            )}
-                    </td>
-
-                    <td>
-                        ${formatClockTime(
-                entry.timeIn
-            )}
-                    </td>
-
-                    <td>
-                        ${formatClockTime(
-                entry.timeOut
-            )}
-                    </td>
-
-                    <td>
-                        ${fmt(
-                entry.hours
-            )}
-                    </td>
-
-                    <td>
-                        ${escapeHTML(
-                entry.description
-            )}
-                    </td>
+                    <th>Date</th>
+                    <th>Accomplishment</th>
+                    <th>Time In</th>
+                    <th>Time Out</th>
+                    <th>Break</th>
+                    <th>Hours</th>
 
                 </tr>
-            `
-        ).join('');
+
+            </thead>
+
+            <tbody>
+
+                ${list
+            .map(
+                entry => `
+                                <tr>
+
+                                    <td>
+                                        ${escapeHTML(formatShortDate(entry.date))}
+                                    </td>
+
+                                    <td>
+
+                                        <strong>
+                                            ${escapeHTML(entry.task)}
+                                        </strong>
+
+                                        <br>
+
+                                        <small>
+                                            ${escapeHTML(entry.description)}
+                                        </small>
+
+                                    </td>
+
+                                    <td>
+                                        ${escapeHTML(formatTime(entry.timeIn))}
+                                    </td>
+
+                                    <td>
+                                        ${escapeHTML(formatTime(entry.timeOut))}
+                                    </td>
+
+                                    <td>
+                                        ${entry.breakMinutes} min
+                                    </td>
+
+                                    <td>
+                                        ${entry.hours.toFixed(2)}
+                                    </td>
+
+                                </tr>
+                            `
+            )
+            .join('')
+        }
+
+            </tbody>
+
+        </table>
+    `;
+}
 
 
-    const printWindow =
+
+function printReport(
+    title,
+    subtitle,
+    list
+) {
+
+    const popup =
         window.open(
             '',
             '_blank'
         );
 
 
-    printWindow.document.write(`
+    if (!popup) {
 
-        <!doctype html>
+        toast(
+            'Allow pop-ups to print reports.'
+        );
+
+        return;
+    }
+
+
+    const total =
+        list.reduce(
+            (
+                sum,
+                item
+            ) =>
+                sum +
+                item.hours,
+            0
+        );
+
+
+    popup.document.write(
+        `
+        <!DOCTYPE html>
 
         <html>
 
         <head>
 
-            <title>${title}</title>
+            <meta charset="UTF-8">
+
+            <title>
+                ${escapeHTML(title)}
+            </title>
 
             <style>
 
@@ -3583,46 +6028,54 @@ function printReport(
                         Arial,
                         sans-serif;
 
-                    padding: 35px;
+                    margin:
+                        30px;
 
-                    color: #222;
+                    color:
+                        #222;
                 }
 
-                h1 {
-                    margin-bottom: 5px;
+                .brand {
+                    color:
+                        #ea6a24;
+
+                    font-weight:
+                        bold;
                 }
 
                 table {
-                    width: 100%;
+                    width:
+                        100%;
 
-                    border-collapse: collapse;
+                    border-collapse:
+                        collapse;
 
-                    margin-top: 25px;
+                    margin-top:
+                        20px;
                 }
 
                 th,
                 td {
-                    border: 1px solid #ccc;
+                    padding:
+                        8px;
 
-                    padding: 8px;
+                    border:
+                        1px solid
+                        #ccc;
 
-                    font-size: 11px;
+                    vertical-align:
+                        top;
 
-                    text-align: left;
+                    text-align:
+                        left;
 
-                    vertical-align: top;
+                    font-size:
+                        10px;
                 }
 
                 th {
-                    background: #eee;
-                }
-
-                @media print {
-
-                    body {
-                        padding: 0;
-                    }
-
+                    background:
+                        #f4f4f4;
                 }
 
             </style>
@@ -3631,592 +6084,125 @@ function printReport(
 
         <body>
 
-            <h1>${title}</h1>
+            <div class="brand">
+                OVER-TIME
+            </div>
+
+            <h1>
+                ${escapeHTML(title)}
+            </h1>
 
             <p>
-                Student:
-                ${escapeHTML(
-        studentName || 'Student'
-    )}
+                ${escapeHTML(subtitle)}
             </p>
 
             <p>
-                Total Rendered Hours:
-                ${fmt(total)}
+                <strong>Student:</strong>
+                ${escapeHTML(studentName)}
             </p>
 
-            <table>
+            <p>
+                <strong>Total Rendered:</strong>
+                ${total.toFixed(2)} hours
+            </p>
 
-                <thead>
-
-                    <tr>
-
-                        <th>Date</th>
-                        <th>Task</th>
-                        <th>Time In</th>
-                        <th>Time Out</th>
-                        <th>Hours</th>
-                        <th>Description</th>
-
-                    </tr>
-
-                </thead>
-
-                <tbody>
-
-                    ${rows}
-
-                </tbody>
-
-            </table>
-
-            <script>
-                window.onload = () => {
-                    window.print();
-                };
-            <\/script>
+            ${createPrintableTable(list)}
 
         </body>
 
         </html>
-    `);
+        `
+    );
 
 
-    printWindow.document.close();
+    popup.document.close();
 
+
+    popup.focus();
+
+
+    setTimeout(
+        () => {
+
+            popup.print();
+
+        },
+        300
+    );
 }
 
 
 
 $('printWeeklyButton')
-    .addEventListener(
-        'click',
-        () =>
-            printReport(
-                'Weekly OJT Report',
-                weekEntries()
-            )
-    );
-
-
-$('printMonthlyButton')
-    .addEventListener(
-        'click',
-        () =>
-            printReport(
-                'Monthly OJT Report',
-                monthEntries(
-                    $('reportMonth').value
-                )
-            )
-    );
-
-
-/* =====================================================
-   WORD DOCX
-===================================================== */
-
-const utf8 =
-    text =>
-        new TextEncoder()
-            .encode(text);
-
-
-
-function u16(number) {
-
-    return [
-        number & 255,
-        number >>> 8 & 255
-    ];
-
-}
-
-
-
-function u32(number) {
-
-    return [
-        number & 255,
-        number >>> 8 & 255,
-        number >>> 16 & 255,
-        number >>> 24 & 255
-    ];
-
-}
-
-
-
-const crcTable =
-    Array.from(
-        {
-            length: 256
-        },
-        (_, value) => {
-
-            let number = value;
-
-
-            for (
-                let index = 0;
-                index < 8;
-                index++
-            ) {
-
-                number =
-                    number & 1
-
-                        ? 0xedb88320 ^
-                        number >>> 1
-
-                        : number >>> 1;
-
-            }
-
-
-            return number >>> 0;
-
-        }
-    );
-
-
-
-function crc32(bytes) {
-
-    let crc =
-        0xffffffff;
-
-
-    for (const byte of bytes) {
-
-        crc =
-            crcTable[
-            (
-                crc ^
-                byte
-            ) &
-            255
-            ] ^
-            crc >>> 8;
-
-    }
-
-
-    return (
-        crc ^
-        0xffffffff
-    ) >>> 0;
-
-}
-
-
-
-function zip(files) {
-
-    const parts = [];
-    const central = [];
-
-    let offset = 0;
-
-
-    for (
-        const [
-            path,
-            data
-        ]
-        of files
-    ) {
-
-        const name =
-            utf8(path);
-
-
-        const bytes =
-            typeof data === 'string'
-                ? utf8(data)
-                : data;
-
-
-        const crc =
-            crc32(bytes);
-
-
-        const local =
-            new Uint8Array([
-
-                ...u32(0x04034b50),
-
-                ...u16(20),
-
-                ...u16(0),
-
-                ...u16(0),
-
-                ...u16(0),
-
-                ...u16(0),
-
-                ...u32(crc),
-
-                ...u32(bytes.length),
-
-                ...u32(bytes.length),
-
-                ...u16(name.length),
-
-                ...u16(0),
-
-                ...name
-            ]);
-
-
-        parts.push(
-            local,
-            bytes
-        );
-
-
-        central.push(
-            new Uint8Array([
-
-                ...u32(0x02014b50),
-
-                ...u16(20),
-
-                ...u16(20),
-
-                ...u16(0),
-
-                ...u16(0),
-
-                ...u16(0),
-
-                ...u16(0),
-
-                ...u32(crc),
-
-                ...u32(bytes.length),
-
-                ...u32(bytes.length),
-
-                ...u16(name.length),
-
-                ...u16(0),
-
-                ...u16(0),
-
-                ...u16(0),
-
-                ...u16(0),
-
-                ...u32(0),
-
-                ...u32(offset),
-
-                ...name
-            ])
-        );
-
-
-        offset +=
-            local.length +
-            bytes.length;
-
-    }
-
-
-    const centralSize =
-        central.reduce(
-            (sum, item) =>
-                sum +
-                item.length,
-            0
-        );
-
-
-    const end =
-        new Uint8Array([
-
-            ...u32(0x06054b50),
-
-            ...u16(0),
-
-            ...u16(0),
-
-            ...u16(files.length),
-
-            ...u16(files.length),
-
-            ...u32(centralSize),
-
-            ...u32(offset),
-
-            ...u16(0)
-        ]);
-
-
-    return new Blob(
-        [
-            ...parts,
-            ...central,
-            end
-        ],
-        {
-            type:
-                'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-        }
-    );
-
-}
-
-
-
-function paragraph(
-    text,
-    bold = false
-) {
-
-    return `
-
-        <w:p>
-
-            <w:r>
-
-                <w:rPr>
-                    ${bold
-            ? '<w:b/>'
-            : ''
-        }
-                </w:rPr>
-
-                <w:t xml:space="preserve">
-                    ${xml(text)}
-                </w:t>
-
-            </w:r>
-
-        </w:p>
-    `;
-
-}
-
-
-
-function createDocx(selected) {
-
-    const body = [];
-
-
-    body.push(
-
-        paragraph(
-            'WEEKLY OJT REPORT',
-            true
-        ),
-
-        paragraph(
-            `Student: ${studentName ||
-            'Student'
-            }`
-        ),
-
-        paragraph(
-            `Total Rendered Hours: ${fmt(
-                selected.reduce(
-                    (sum, entry) =>
-                        sum +
-                        Number(entry.hours || 0),
-                    0
-                )
-            )}`
-        ),
-
-        paragraph(' ')
-
-    );
-
-
-    selected.forEach(entry => {
-
-        body.push(
-
-            paragraph(
-                `Date: ${formatDate(
-                    entry.date
-                )}`,
-                true
-            ),
-
-            paragraph(
-                `Task: ${entry.task}`
-            ),
-
-            paragraph(
-                `Time: ${formatClockTime(
-                    entry.timeIn
-                )} - ${formatClockTime(
-                    entry.timeOut
-                )}`
-            ),
-
-            paragraph(
-                `Break: ${entry.breakMinutes} minutes`
-            ),
-
-            paragraph(
-                `Rendered Hours: ${fmt(
-                    entry.hours
-                )}`
-            ),
-
-            paragraph(
-                `Description: ${entry.description}`
-            ),
-
-            paragraph(' ')
-
-        );
-
-    });
-
-
-    const documentXML = `
-
-        <?xml version="1.0"
-            encoding="UTF-8"
-            standalone="yes"?>
-
-        <w:document
-            xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
-        >
-
-            <w:body>
-
-                ${body.join('')}
-
-                <w:sectPr>
-
-                    <w:pgSz
-                        w:w="12240"
-                        w:h="15840"
-                    />
-
-                </w:sectPr>
-
-            </w:body>
-
-        </w:document>
-    `;
-
-
-    const types = `
-
-        <?xml version="1.0"
-            encoding="UTF-8"?>
-
-        <Types
-            xmlns="http://schemas.openxmlformats.org/package/2006/content-types"
-        >
-
-            <Default
-                Extension="rels"
-                ContentType="application/vnd.openxmlformats-package.relationships+xml"
-            />
-
-            <Default
-                Extension="xml"
-                ContentType="application/xml"
-            />
-
-            <Override
-                PartName="/word/document.xml"
-                ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"
-            />
-
-        </Types>
-    `;
-
-
-    return zip([
-
-        [
-            '[Content_Types].xml',
-            types
-        ],
-
-        [
-            '_rels/.rels',
-
-            `<?xml version="1.0"
-                encoding="UTF-8"?>
-
-            <Relationships
-                xmlns="http://schemas.openxmlformats.org/package/2006/relationships"
-            >
-
-                <Relationship
-                    Id="rId1"
-                    Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"
-                    Target="word/document.xml"
-                />
-
-            </Relationships>`
-        ],
-
-        [
-            'word/document.xml',
-            documentXML
-        ],
-
-        [
-            'word/_rels/document.xml.rels',
-
-            `<?xml version="1.0"
-                encoding="UTF-8"?>
-
-            <Relationships
-                xmlns="http://schemas.openxmlformats.org/package/2006/relationships"
-            ></Relationships>`
-        ]
-
-    ]);
-
-}
-
-
-
-$('exportWordButton')
-    .addEventListener(
+    ?.addEventListener(
         'click',
         () => {
 
-            const selected =
-                weekEntries();
+            const report =
+                getWeeklyReportData();
 
 
-            if (!selected.length) {
+            printReport(
 
-                toast(
-                    'There are no entries to export.'
-                );
+                'Weekly OJT Accomplishment Report',
 
-                return;
+                `${formatDate(report.start)} – ${formatDate(report.end)}`,
 
-            }
+                report.entries
 
-
-            downloadBlob(
-                createDocx(selected),
-                'OJT_Weekly_Report.docx'
             );
 
         }
     );
 
 
-/* =====================================================
-   DOWNLOAD
-===================================================== */
+
+$('printMonthlyButton')
+    ?.addEventListener(
+        'click',
+        () => {
+
+            const report =
+                getMonthlyReportData();
+
+
+            const date =
+                new Date(
+                    `${report.month}-01T00:00:00`
+                );
+
+
+            const monthLabel =
+                date.toLocaleDateString(
+                    undefined,
+                    {
+                        month:
+                            'long',
+
+                        year:
+                            'numeric'
+                    }
+                );
+
+
+            printReport(
+
+                'Monthly OJT Accomplishment Report',
+
+                monthLabel,
+
+                report.entries
+
+            );
+
+        }
+    );
+
+
+
+// 
+// DOWNLOAD
+// 
 
 function downloadBlob(
     blob,
@@ -4224,168 +6210,172 @@ function downloadBlob(
 ) {
 
     const url =
-        URL.createObjectURL(blob);
+        URL.createObjectURL(
+            blob
+        );
 
 
     const link =
-        document.createElement('a');
+        document.createElement(
+            'a'
+        );
 
 
-    link.href = url;
+    link.href =
+        url;
+
 
     link.download =
         filename;
 
 
-    document.body.append(link);
+    document.body.appendChild(
+        link
+    );
+
 
     link.click();
+
 
     link.remove();
 
 
     setTimeout(
-        () =>
+        () => {
+
             URL.revokeObjectURL(
                 url
-            ),
-        30000
-    );
-
-}
-
-
-/* =====================================================
-   SETTINGS
-===================================================== */
-
-function updateSettingsForm() {
-
-    $('autoBreakEnabled').checked =
-        settings.autoBreakEnabled;
-
-
-    $('autoBreakThreshold').value =
-        settings.autoBreakThreshold;
-
-
-    $('autoBreakMinutes').value =
-        settings.autoBreakMinutes;
-
-
-    $('reminderEnabled').checked =
-        settings.reminderEnabled;
-
-
-    $('reminderTime').value =
-        settings.reminderTime;
-
-
-    $('darkModeToggle').checked =
-        settings.darkMode;
-
-}
-
-
-
-$('settingsForm')
-    .addEventListener(
-        'submit',
-        async event => {
-
-            event.preventDefault();
-
-
-            studentName =
-                $('studentName')
-                    .value
-                    .trim();
-
-
-            goal =
-                Number(
-                    $('hoursGoal').value
-                );
-
-
-            settings.autoBreakEnabled =
-                $('autoBreakEnabled').checked;
-
-
-            settings.autoBreakThreshold =
-                Number(
-                    $('autoBreakThreshold')
-                        .value
-                );
-
-
-            settings.autoBreakMinutes =
-                Number(
-                    $('autoBreakMinutes')
-                        .value
-                );
-
-
-            settings.reminderEnabled =
-                $('reminderEnabled').checked;
-
-
-            settings.reminderTime =
-                $('reminderTime').value;
-
-
-            settings.darkMode =
-                $('darkModeToggle').checked;
-
-
-            if (
-                settings.reminderEnabled &&
-                'Notification' in window &&
-                Notification.permission === 'default'
-            ) {
-
-                await Notification
-                    .requestPermission();
-
-            }
-
-
-            await saveData();
-
-
-            updateStudentInfo();
-
-            applyDarkMode();
-
-            render();
-
-
-            toast(
-                'Settings saved.'
             );
 
-        }
+        },
+        1000
     );
-
-
-
-function applyDarkMode() {
-
-    document.body
-        .classList
-        .toggle(
-            'dark',
-            Boolean(
-                settings.darkMode
-            )
-        );
-
 }
 
 
-/* =====================================================
-   REMINDER
-===================================================== */
+
+// 
+// ONLINE STATUS
+// 
+
+function updateConnectionStatus() {
+
+    if (
+        !$('connectionText') ||
+        !$('connectionStatus')
+    ) {
+        return;
+    }
+
+
+    const online =
+        navigator.onLine;
+
+
+    $('connectionText').textContent =
+        online
+            ?
+            'Online'
+            :
+            'Offline';
+
+
+    $('connectionStatus')
+        .classList
+        .toggle(
+            'offline',
+            !online
+        );
+}
+
+
+
+window.addEventListener(
+    'online',
+    async () => {
+
+        updateConnectionStatus();
+
+
+        if (
+            currentUser
+        ) {
+
+            await refreshCloudData();
+
+        }
+
+    }
+);
+
+
+
+window.addEventListener(
+    'offline',
+    updateConnectionStatus
+);
+
+
+
+// 
+// REFRESH CLOUD DATA
+// 
+
+async function refreshCloudData() {
+
+    if (
+        !currentUser
+    ) {
+        return;
+    }
+
+
+    try {
+
+        await loadProfile();
+
+        await loadAttendance();
+
+        await loadEntries();
+
+
+        render();
+
+    } catch (error) {
+
+        console.error(
+            'Refresh error:',
+            error
+        );
+
+    }
+}
+
+
+
+// Refresh when returning from another tab/device.
+
+window.addEventListener(
+    'focus',
+    () => {
+
+        if (
+            currentUser &&
+            navigator.onLine
+        ) {
+
+            refreshCloudData();
+
+        }
+
+    }
+);
+
+
+
+// 
+// REMINDER
+// 
 
 function checkReminder() {
 
@@ -4398,306 +6388,49 @@ function checkReminder() {
 
 
     const attendance =
-        attendanceForDate(
-            localDate()
+        attendances.find(
+            item =>
+                item.date ===
+                localDate()
         );
 
 
     if (
-        !attendance ||
-        !attendance.timeIn ||
+        !attendance?.timeIn ||
         attendance.timeOut
     ) {
         return;
     }
 
 
-    const now =
-        currentTime();
-
-
     if (
-        now <
+        currentTime() >=
         settings.reminderTime
     ) {
-        return;
-    }
 
+        reminderAlreadyShown =
+            true;
 
-    reminderAlreadyShown =
-        true;
-
-
-    const message =
-        'You are still timed in. Remember to record your Time Out.';
-
-
-    toast(message);
-
-
-    if (
-        'Notification' in window &&
-        Notification.permission ===
-        'granted'
-    ) {
-
-        new Notification(
-            'Over-Time Reminder',
-            {
-                body: message,
-                icon:
-                    'icons/icon-192.png'
-            }
-        );
-
-    }
-
-}
-
-
-/* =====================================================
-   BACKUP
-===================================================== */
-
-$('backupButton')
-    .addEventListener(
-        'click',
-        () => {
-
-            const backup = {
-
-                format:
-                    'overtime-backup-v3',
-
-                savedAt:
-                    new Date()
-                        .toISOString(),
-
-                studentName,
-
-                goal,
-
-                entries,
-
-                attendances,
-
-                settings,
-
-                entryDraft
-            };
-
-
-            downloadBlob(
-
-                new Blob(
-                    [
-                        JSON.stringify(
-                            backup,
-                            null,
-                            2
-                        )
-                    ],
-                    {
-                        type:
-                            'application/json'
-                    }
-                ),
-
-                `OverTime_Backup_${localDate()}.json`
-            );
-
-        }
-    );
-
-
-
-$('importBackup')
-    .addEventListener(
-        'change',
-        async event => {
-
-            const file =
-                event.target
-                    .files?.[0];
-
-
-            event.target.value = '';
-
-
-            if (!file) {
-                return;
-            }
-
-
-            try {
-
-                const backup =
-                    JSON.parse(
-                        await file.text()
-                    );
-
-
-                if (
-                    !Array.isArray(
-                        backup.entries
-                    )
-                ) {
-
-                    throw Error(
-                        'Invalid backup.'
-                    );
-
-                }
-
-
-                if (
-                    !confirm(
-                        'Replace your current data with this backup?'
-                    )
-                ) {
-                    return;
-                }
-
-
-                entries =
-                    backup.entries || [];
-
-
-                attendances =
-                    backup.attendances || [];
-
-
-                studentName =
-                    backup.studentName || '';
-
-
-                goal =
-                    Number(
-                        backup.goal
-                    ) || 468;
-
-
-                settings = {
-
-                    ...settings,
-
-                    ...(backup.settings || {})
-                };
-
-
-                entryDraft =
-                    backup.entryDraft || null;
-
-
-                await saveData();
-
-
-                updateStudentInfo();
-
-                updateSettingsForm();
-
-                applyDarkMode();
-
-                render();
-
-
-                toast(
-                    'Backup imported.'
-                );
-
-            } catch (error) {
-
-                console.error(error);
-
-                toast(
-                    'Invalid backup file.'
-                );
-
-            }
-
-        }
-    );
-
-
-/* =====================================================
-   ONLINE / OFFLINE
-===================================================== */
-
-function updateConnectionStatus() {
-
-    const online =
-        navigator.onLine;
-
-
-    $('connectionStatus')
-        .classList
-        .toggle(
-            'offline',
-            !online
-        );
-
-
-    $('connectionStatus')
-        .lastChild.textContent =
-        online
-            ? ' Online'
-            : ' Offline';
-
-}
-
-
-
-window.addEventListener(
-    'online',
-    () => {
-
-        updateConnectionStatus();
 
         toast(
-            'Back online.'
+            'Reminder: You are still timed in.'
         );
 
     }
+}
+
+
+
+setInterval(
+    checkReminder,
+    60000
 );
 
 
-window.addEventListener(
-    'offline',
-    () => {
 
-        updateConnectionStatus();
-
-        toast(
-            'You are offline. Local tracking still works.'
-        );
-
-    }
-);
-
-
-/* =====================================================
-   PWA
-===================================================== */
-
-function registerPWA() {
-
-    if (
-        'serviceWorker' in navigator
-    ) {
-
-        navigator.serviceWorker
-            .register(
-                './service-worker.js'
-            )
-            .catch(
-                console.error
-            );
-
-    }
-
-}
-
-
+// 
+// PWA INSTALL
+// 
 
 window.addEventListener(
     'beforeinstallprompt',
@@ -4710,28 +6443,37 @@ window.addEventListener(
             event;
 
 
-        $('installAppButton').hidden =
-            false;
+        if ($('installAppButton')) {
+
+            $('installAppButton').hidden =
+                false;
+
+        }
 
 
-        $('settingsInstallButton').hidden =
-            false;
+        if ($('settingsInstallButton')) {
+
+            $('settingsInstallButton').hidden =
+                false;
+
+        }
 
     }
 );
 
 
 
-async function installPWA() {
+async function installApp() {
 
-    if (!deferredInstallPrompt) {
+    if (
+        !deferredInstallPrompt
+    ) {
 
         toast(
-            'The app is already installed or installation is not currently available.'
+            'Install is not available yet.'
         );
 
         return;
-
     }
 
 
@@ -4746,166 +6488,209 @@ async function installPWA() {
         null;
 
 
-    $('installAppButton').hidden =
-        true;
+    if ($('installAppButton')) {
+
+        $('installAppButton').hidden =
+            true;
+
+    }
 
 
-    $('settingsInstallButton').hidden =
-        true;
+    if ($('settingsInstallButton')) {
 
+        $('settingsInstallButton').hidden =
+            true;
+
+    }
 }
 
 
 
 $('installAppButton')
-    .addEventListener(
+    ?.addEventListener(
         'click',
-        installPWA
+        installApp
     );
+
 
 
 $('settingsInstallButton')
-    .addEventListener(
+    ?.addEventListener(
         'click',
-        installPWA
+        installApp
     );
 
 
-/* =====================================================
-   GLOBAL CLICK EVENTS
-===================================================== */
 
-document.addEventListener(
-    'click',
-    event => {
+// 
+// TODAY
+// 
 
-        const button =
-            event.target
-                .closest('button');
+function renderToday() {
 
-
-        if (!button) {
-            return;
-        }
+    if (
+        !$('today')
+    ) {
+        return;
+    }
 
 
-        if (button.dataset.page) {
+    $('today').textContent =
+        new Date()
+            .toLocaleDateString(
+                undefined,
+                {
+                    month:
+                        'short',
 
-            switchPage(
-                button.dataset.page
+                    day:
+                        'numeric',
+
+                    year:
+                        'numeric'
+                }
+            );
+}
+
+
+
+// 
+// MAIN RENDER
+// 
+
+function render() {
+
+    updateStudentInfo();
+
+    renderTodayAttendance();
+
+    renderAttendanceHistory();
+
+    renderDashboard();
+
+    renderEntries();
+
+    renderCalendar();
+
+    renderWeeklyReport();
+
+    renderMonthlyReport();
+
+    createIcons();
+}
+
+
+
+// 
+// AUTH STATE
+//
+// IMPORTANT:
+// Do NOT call openApp() again from SIGNED_IN here.
+// loginUser() and checkAuth() already handle it.
+// This avoids double loading / stuck sign-in.
+// 
+
+supabaseClient.auth
+    .onAuthStateChange(
+        (
+            event,
+            session
+        ) => {
+
+            console.log(
+                'Auth event:',
+                event
             );
 
-        }
+
+            if (
+                event ===
+                'SIGNED_OUT'
+            ) {
+
+                currentUser =
+                    null;
 
 
-        if (
-            button.hasAttribute(
-                'data-new'
-            )
-        ) {
-
-            openForm();
-
-        }
+                entries =
+                    [];
 
 
-        if (button.dataset.detail) {
-
-            openDetail(
-                button.dataset.detail
-            );
-
-        }
+                attendances =
+                    [];
 
 
-        if (button.dataset.edit) {
+                if ($('mainApp')) {
 
-            $('detailDialog')
-                .close();
+                    $('mainApp').hidden =
+                        true;
 
-
-            openForm(
-                button.dataset.edit
-            );
-
-        }
+                }
 
 
-        if (button.dataset.delete) {
+                if ($('authScreen')) {
 
-            deleteEntry(
-                button.dataset.delete
-            );
+                    $('authScreen').hidden =
+                        false;
+
+                }
+
+            }
 
         }
+    );
 
 
-        if (
-            button.dataset.pageNumber
-        ) {
 
-            entriesCurrentPage =
-                Number(
-                    button.dataset
-                        .pageNumber
-                );
+// 
+// INITIALIZE
+// 
 
+async function initialize() {
 
-            renderEntries();
-
-        }
+    renderToday();
 
 
-        if (
-            button.dataset.calendarDate
-        ) {
-
-            openCalendarDay(
-                button.dataset
-                    .calendarDate
-            );
-
-        }
+    updateConnectionStatus();
 
 
-        if (
-            button.dataset.editAttendance
-        ) {
+    if ($('weekDate')) {
 
-            openAttendanceEdit(
-                button.dataset
-                    .editAttendance
-            );
-
-        }
+        $('weekDate').value =
+            localDate();
 
     }
-);
 
 
-/* =====================================================
-   TOP DATE
-===================================================== */
+    if ($('reportMonth')) {
 
-$('today')
-    .textContent =
-    new Date()
-        .toLocaleDateString(
-            'en-PH',
-            {
-                weekday: 'short',
-                month: 'short',
-                day: 'numeric'
-            }
+        $('reportMonth').value =
+            localDate()
+                .slice(
+                    0,
+                    7
+                );
+
+    }
+
+
+    try {
+
+        await checkAuth();
+
+    } catch (error) {
+
+        console.error(
+            'Initialize error:',
+            error
         );
 
-$('overviewName').textContent =
-    studentName
-        ? studentName.split(' ')[0]
-        : 'Student';
+    }
 
-/* =====================================================
-   START
-===================================================== */
+
+    createIcons();
+}
+
+
 
 initialize();

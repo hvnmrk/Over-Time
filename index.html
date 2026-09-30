@@ -1,29 +1,218 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
-    <meta charset="utf-8">
+    <link rel="manifest" href="/manifest.json">
 
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#ea6a24">
+
+    <meta name="mobile-web-app-capable" content="yes">
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+    <meta name="apple-mobile-web-app-title" content="Over-Time">
+
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <meta name="theme-color" content="#ea6a24">
 
     <title>Over-Time | OJT Tracker</title>
 
-    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="/icons/icon-192.png">
 
-    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <link rel="manifest" href="./manifest.json">
 
-    <link rel="stylesheet" href="style.css">
+    <link rel="apple-touch-icon" href="./icons/icon-192.png">
+
+
+    <link rel="stylesheet" href="./style.css">
+
 
     <script src="https://unpkg.com/lucide@latest" defer></script>
 
-    <script src="script.js" defer></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+
+    <script src="./script.js" defer></script>
+
 </head>
 
 <body>
 
-    <div class="app-shell">
+
+    <!-- 
+     AUTH
+ -->
+
+    <section class="auth-screen" id="authScreen">
+
+        <div class="auth-card">
+
+            <div class="brand auth-brand">
+
+                <span class="brand-mark">
+                    ot
+                </span>
+
+                <span class="brand-name">
+                    over<span>time</span>
+                </span>
+
+            </div>
+
+
+            <!-- LOGIN -->
+
+            <div id="loginView">
+
+                <p class="eyebrow">
+                    WELCOME BACK
+                </p>
+
+                <h1>
+                    Sign in.
+                </h1>
+
+                <p class="muted auth-description">
+                    Continue tracking your internship
+                    from any device.
+                </p>
+
+
+                <label class="form-label">
+
+                    Email
+
+                    <input id="loginEmail" type="email" placeholder="you@example.com" autocomplete="email">
+
+                </label>
+
+
+                <label class="form-label">
+
+                    Password
+
+                    <input id="loginPassword" type="password" placeholder="Your password"
+                        autocomplete="current-password">
+
+                </label>
+
+
+                <p class="error" id="loginError"></p>
+
+
+                <button class="button primary auth-button" id="loginButton" type="button">
+                    Sign In
+                </button>
+
+
+                <p class="auth-switch">
+
+                    Don't have an account?
+
+                    <button id="showSignup" type="button">
+                        Create account
+                    </button>
+
+                </p>
+
+            </div>
+
+
+            <!-- SIGNUP -->
+
+            <div id="signupView" hidden>
+
+                <p class="eyebrow">
+                    CREATE ACCOUNT
+                </p>
+
+                <h1>
+                    Get started.
+                </h1>
+
+                <p class="muted auth-description">
+                    Create your account to sync
+                    your OJT records.
+                </p>
+
+
+                <label class="form-label">
+
+                    Student Name
+
+                    <input id="signupName" type="text" placeholder="Your name" autocomplete="name">
+
+                </label>
+
+
+                <label class="form-label">
+
+                    Email
+
+                    <input id="signupEmail" type="email" placeholder="you@example.com" autocomplete="email">
+
+                </label>
+
+
+                <label class="form-label">
+
+                    Password
+
+                    <input id="signupPassword" type="password" placeholder="At least 6 characters"
+                        autocomplete="new-password">
+
+                </label>
+
+
+                <label class="form-label">
+
+                    Confirm Password
+
+                    <input id="signupConfirmPassword" type="password" placeholder="Repeat password"
+                        autocomplete="new-password">
+
+                </label>
+
+
+                <p class="error" id="signupError"></p>
+
+
+                <button class="button primary auth-button" id="signupButton" type="button">
+                    Create Account
+                </button>
+
+
+                <p class="auth-switch">
+
+                    Already have an account?
+
+                    <button id="showLogin" type="button">
+                        Sign in
+                    </button>
+
+                </p>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- 
+     MAIN APPLICATION
+     -->
+
+    <div class="app-shell" id="mainApp" hidden>
+
 
         <!-- SIDEBAR -->
 
@@ -51,37 +240,37 @@
 
                 <button class="nav-link active" data-page="overview" type="button">
                     <i data-lucide="layout-dashboard"></i>
-                    <span>Dashboard</span>
+                    Dashboard
                 </button>
 
 
                 <button class="nav-link" data-page="calendar" type="button">
                     <i data-lucide="calendar-days"></i>
-                    <span>Calendar</span>
+                    Calendar
                 </button>
 
 
                 <button class="nav-link" data-page="attendance" type="button">
                     <i data-lucide="clock-3"></i>
-                    <span>Attendance</span>
+                    Attendance
                 </button>
 
 
                 <button class="nav-link" data-page="entries" type="button">
                     <i data-lucide="notebook-tabs"></i>
-                    <span>Daily Logs</span>
+                    Daily Logs
                 </button>
 
 
                 <button class="nav-link" data-page="reports" type="button">
                     <i data-lucide="file-text"></i>
-                    <span>Reports</span>
+                    Reports
                 </button>
 
 
                 <button class="nav-link" data-page="settings" type="button">
                     <i data-lucide="settings"></i>
-                    <span>Settings</span>
+                    Settings
                 </button>
 
             </nav>
@@ -93,14 +282,15 @@
                     S
                 </div>
 
+
                 <div class="profile-text">
 
                     <strong id="profileName">
                         Student
                     </strong>
 
-                    <small>
-                        OJT Student
+                    <small id="profileEmail">
+                        —
                     </small>
 
                 </div>
@@ -110,39 +300,49 @@
         </aside>
 
 
-
         <div class="backdrop" id="backdrop" hidden></div>
 
 
 
+        <!-- CONTENT -->
+
         <div class="content-shell">
 
-            <!-- TOP BAR -->
+
+            <!-- TOPBAR -->
 
             <header class="topbar">
 
-                <button class="menu-button" id="menuButton" type="button" aria-label="Open menu">
+                <button class="menu-button" id="menuButton" type="button">
                     ☰
                 </button>
 
 
                 <div class="breadcrumb">
+
                     OJT Tracker /
+
                     <strong id="pageTitle">
                         Dashboard
                     </strong>
+
                 </div>
 
 
                 <div class="topbar-actions">
 
                     <span class="connection-status" id="connectionStatus">
+
                         <span class="status-dot"></span>
-                        Online
+
+                        <span id="connectionText">
+                            Online
+                        </span>
+
                     </span>
 
 
-                    <button class="topbar-button" id="installAppButton" type="button" hidden>
+                    <button class="install-button" id="installAppButton" type="button" hidden>
                         <i data-lucide="download"></i>
                         Install
                     </button>
@@ -158,51 +358,44 @@
 
             <main>
 
-                <!-- =====================================================
+
+                <!-- =================================================
                  DASHBOARD
-            ====================================================== -->
+            ================================================== -->
 
                 <section class="page active" id="overview">
+                    <div class="dashboard-header">
 
-                    <!-- OLD DASHBOARD -->
+                        <div class="dashboard-greeting">
 
-                   <div class="dashboard-header">
+                            <p class="eyebrow accent">
+                                OJT TRACKER
+                            </p>
 
-    <div class="dashboard-greeting">
+                            <h1>
+                                Good day,
+                                <span id="overviewName">
+                                    Student
+                                </span>.
+                            </h1>
 
-        <p class="eyebrow accent">
-            OJT TRACKER
-        </p>
+                            <p class="dashboard-description">
+                                Record your attendance,
+                                daily tasks, and rendered internship hours.
+                            </p>
 
-        <h1>
-            Hello,
-            <span id="overviewName">
-                Student
-            </span>.
-        </h1>
-
-        <p class="dashboard-description">
-            Record your attendance, daily tasks,
-            and rendered internship hours.
-        </p>
-
-    </div>
+                        </div>
 
 
-    <button
-        class="button primary dashboard-add-button"
-        type="button"
-        data-new
-    >
-        + Add Daily Entry
-    </button>
+                        <button class="button primary dashboard-add-button" type="button" data-new>
 
-</div>
+                            <i data-lucide="plus"></i>
 
+                            Add Daily Entry
 
+                        </button>
 
-                
-
+                    </div>
 
 
                     <!-- ATTENDANCE -->
@@ -215,9 +408,11 @@
                                 TODAY'S ATTENDANCE
                             </p>
 
+
                             <h2 id="attendanceDate">
                                 —
                             </h2>
+
 
                             <p class="muted" id="attendanceStatus">
                                 You haven't timed in yet.
@@ -248,8 +443,6 @@
 
 
 
-                    <!-- ALERT -->
-
                     <div class="attendance-warning" id="attendanceWarning" hidden>
 
                         <i data-lucide="triangle-alert"></i>
@@ -260,11 +453,13 @@
 
 
 
+                    <!-- PROGRESS -->
+
                     <div class="section-heading">
 
                         <div>
 
-                            <p class="eyebrow accent">
+                            <p class="eyebrow">
                                 AT A GLANCE
                             </p>
 
@@ -291,24 +486,17 @@
                                 <i data-lucide="clock"></i>
                             </span>
 
-                            <p>
-                                Rendered hours
-                            </p>
+                            <p>Rendered hours</p>
 
                             <h3>
-
                                 <span id="renderedHours">
                                     0
                                 </span>
-
-                                <small>
-                                    hrs
-                                </small>
-
+                                <small>hrs</small>
                             </h3>
 
-                            <span id="remainingHours" class="muted">
-                                0 hours remaining
+                            <span class="muted" id="remainingHours">
+                                0 remaining
                             </span>
 
                         </article>
@@ -321,24 +509,17 @@
                                 <i data-lucide="target"></i>
                             </span>
 
-                            <p>
-                                Required hours
-                            </p>
+                            <p>Required hours</p>
 
                             <h3>
-
                                 <span id="requiredHours">
                                     468
                                 </span>
-
-                                <small>
-                                    hrs
-                                </small>
-
+                                <small>hrs</small>
                             </h3>
 
                             <span class="muted">
-                                Editable in Settings
+                                OJT requirement
                             </span>
 
                         </article>
@@ -351,9 +532,7 @@
                                 <i data-lucide="notebook"></i>
                             </span>
 
-                            <p>
-                                Daily entries
-                            </p>
+                            <p>Daily entries</p>
 
                             <h3 id="entryCount">
                                 0
@@ -374,41 +553,18 @@
                     <div class="month-summary">
 
                         <div>
-
-                            <span>
-                                Logs this month
-                            </span>
-
-                            <strong id="monthLogCount">
-                                0
-                            </strong>
-
+                            <span>Logs this month</span>
+                            <strong id="monthLogCount">0</strong>
                         </div>
 
-
                         <div>
-
-                            <span>
-                                Attendance days
-                            </span>
-
-                            <strong id="monthAttendanceCount">
-                                0
-                            </strong>
-
+                            <span>Attendance days</span>
+                            <strong id="monthAttendanceCount">0</strong>
                         </div>
 
-
                         <div>
-
-                            <span>
-                                Incomplete attendance
-                            </span>
-
-                            <strong id="monthIncompleteCount">
-                                0
-                            </strong>
-
+                            <span>Incomplete</span>
+                            <strong id="monthIncompleteCount">0</strong>
                         </div>
 
                     </div>
@@ -447,12 +603,6 @@
 
                             </div>
 
-
-                            <p class="muted">
-                                Hours are calculated from time in,
-                                time out, and your break.
-                            </p>
-
                         </article>
 
 
@@ -471,6 +621,7 @@
 
                             </div>
 
+
                             <div id="recentEntries"></div>
 
                         </article>
@@ -481,9 +632,9 @@
 
 
 
-                <!-- =====================================================
+                <!-- =================================================
                  CALENDAR
-            ====================================================== -->
+            ================================================== -->
 
                 <section class="page" id="calendar">
 
@@ -491,7 +642,7 @@
 
                         <div>
 
-                            <p class="eyebrow accent">
+                            <p class="eyebrow">
                                 YOUR OJT CALENDAR
                             </p>
 
@@ -500,8 +651,8 @@
                             </h1>
 
                             <p class="muted">
-                                See your attendance and daily logs
-                                in one place.
+                                Select a date to view attendance,
+                                daily logs, and evidence.
                             </p>
 
                         </div>
@@ -514,8 +665,7 @@
 
                         <div class="calendar-header">
 
-                            <button class="calendar-nav-button" id="calendarPrevious" type="button"
-                                aria-label="Previous month">
+                            <button class="calendar-nav-button" id="calendarPrevious" type="button">
                                 <i data-lucide="chevron-left"></i>
                             </button>
 
@@ -533,7 +683,7 @@
                             </div>
 
 
-                            <button class="calendar-nav-button" id="calendarNext" type="button" aria-label="Next month">
+                            <button class="calendar-nav-button" id="calendarNext" type="button">
                                 <i data-lucide="chevron-right"></i>
                             </button>
 
@@ -545,17 +695,17 @@
 
                             <span>
                                 <i class="legend-dot complete"></i>
-                                Log + attendance
+                                Log + Attendance
                             </span>
 
                             <span>
                                 <i class="legend-dot attendance-only"></i>
-                                Attendance only
+                                Attendance
                             </span>
 
                             <span>
                                 <i class="legend-dot log-only"></i>
-                                Log only
+                                Log
                             </span>
 
                             <span>
@@ -588,9 +738,9 @@
 
 
 
-                <!-- =====================================================
-                 ATTENDANCE HISTORY
-            ====================================================== -->
+                <!-- =================================================
+                 ATTENDANCE
+            ================================================== -->
 
                 <section class="page" id="attendance">
 
@@ -598,7 +748,7 @@
 
                         <div>
 
-                            <p class="eyebrow accent">
+                            <p class="eyebrow">
                                 ATTENDANCE RECORD
                             </p>
 
@@ -607,8 +757,8 @@
                             </h1>
 
                             <p class="muted">
-                                Review and correct your recorded
-                                time in and time out.
+                                Review your recorded
+                                Time In and Time Out.
                             </p>
 
                         </div>
@@ -616,12 +766,13 @@
                     </div>
 
 
-                    <div class="attendance-history-toolbar">
+
+                    <div class="attendance-filter">
 
                         <input id="attendanceMonthFilter" type="month">
 
                         <button class="button secondary" id="clearAttendanceMonth" type="button">
-                            Show all
+                            Show All
                         </button>
 
                     </div>
@@ -633,9 +784,9 @@
 
 
 
-                <!-- =====================================================
+                <!-- =================================================
                  DAILY LOGS
-            ====================================================== -->
+            ================================================== -->
 
                 <section class="page" id="entries">
 
@@ -643,7 +794,7 @@
 
                         <div>
 
-                            <p class="eyebrow accent">
+                            <p class="eyebrow">
                                 YOUR WORK LOG
                             </p>
 
@@ -652,15 +803,16 @@
                             </h1>
 
                             <p class="muted">
-                                Record tasks and optional photo
-                                evidence for each OJT day.
+                                Record tasks and optional
+                                photo evidence.
                             </p>
 
                         </div>
 
 
                         <button class="button primary" type="button" data-new>
-                            + New Entry
+                            <i data-lucide="plus"></i>
+                            New Entry
                         </button>
 
                     </div>
@@ -671,95 +823,54 @@
 
                     <section class="log-tools">
 
-                        <div class="log-tools-header">
+                        <div class="filter-title">
 
-                            <div class="filter-title">
-
-                                <span class="filter-title-icon">
-                                    <i data-lucide="list-filter"></i>
-                                </span>
-
-
-                                <div>
-
-                                    <strong>
-                                        Filters
-                                    </strong>
-
-                                    <small>
-                                        Search and narrow down
-                                        your daily logs
-                                    </small>
-
-                                </div>
-
+                            <div class="filter-icon">
+                                <i data-lucide="list-filter"></i>
                             </div>
 
-
-                            <button class="filter-clear-btn" id="clearEntryFilters" type="button">
-                                <i data-lucide="rotate-ccw"></i>
-                                Clear
-                            </button>
+                            <div>
+                                <strong>Filters</strong>
+                                <small>
+                                    Search your daily logs
+                                </small>
+                            </div>
 
                         </div>
 
 
-
                         <div class="filter-grid">
 
-                            <label class="filter-field filter-field-wide">
+                            <label class="filter-field filter-wide">
 
-                                <span class="field-label">
-                                    <i data-lucide="search"></i>
-                                    Search
-                                </span>
+                                Search
 
-
-                                <div class="field-control">
-
-                                    <i data-lucide="search" class="field-icon"></i>
-
-                                    <input id="search" class="search" type="search"
-                                        placeholder="Search task or description...">
-
-                                </div>
+                                <input id="search" type="search" placeholder="Search task or description...">
 
                             </label>
 
 
-
                             <label class="filter-field">
 
-                                <span class="field-label">
-                                    <i data-lucide="calendar"></i>
-                                    From
-                                </span>
+                                From
 
                                 <input id="filterDateFrom" type="date">
 
                             </label>
 
 
-
                             <label class="filter-field">
 
-                                <span class="field-label">
-                                    <i data-lucide="calendar"></i>
-                                    To
-                                </span>
+                                To
 
                                 <input id="filterDateTo" type="date">
 
                             </label>
 
 
-
                             <label class="filter-field">
 
-                                <span class="field-label">
-                                    <i data-lucide="arrow-down-up"></i>
-                                    Sort by
-                                </span>
+                                Sort
 
                                 <select id="entrySort">
 
@@ -779,22 +890,14 @@
                                         Lowest hours
                                     </option>
 
-                                    <option value="task-az">
-                                        Task A–Z
-                                    </option>
-
                                 </select>
 
                             </label>
 
 
-
                             <label class="filter-field">
 
-                                <span class="field-label">
-                                    <i data-lucide="rows-3"></i>
-                                    Per page
-                                </span>
+                                Per page
 
                                 <select id="entriesPerPage">
 
@@ -817,12 +920,16 @@
                         </div>
 
 
-
                         <div class="filter-footer">
 
-                            <span class="result-count" id="entriesResultCount">
+                            <span id="entriesResultCount">
                                 0 entries
                             </span>
+
+
+                            <button class="text-button" id="clearEntryFilters" type="button">
+                                Clear Filters
+                            </button>
 
                         </div>
 
@@ -839,9 +946,9 @@
 
 
 
-                <!-- =====================================================
+                <!-- =================================================
                  REPORTS
-            ====================================================== -->
+            ================================================== -->
 
                 <section class="page" id="reports">
 
@@ -849,8 +956,8 @@
 
                         <div>
 
-                            <p class="eyebrow accent">
-                                YOUR DOCUMENTATION
+                            <p class="eyebrow">
+                                OJT DOCUMENTATION
                             </p>
 
                             <h1>
@@ -858,7 +965,9 @@
                             </h1>
 
                             <p class="muted">
-                                Generate weekly or monthly reports.
+                                Review your rendered hours,
+                                accomplishments, attendance,
+                                and documented OJT activity.
                             </p>
 
                         </div>
@@ -866,14 +975,18 @@
                     </div>
 
 
+                    <!-- REPORT TYPE -->
 
                     <div class="report-tabs">
 
                         <button class="report-tab active" data-report-tab="weekly" type="button">
+                            <i data-lucide="calendar-range"></i>
                             Weekly
                         </button>
 
+
                         <button class="report-tab" data-report-tab="monthly" type="button">
+                            <i data-lucide="calendar-days"></i>
                             Monthly
                         </button>
 
@@ -881,13 +994,28 @@
 
 
 
-                    <!-- WEEKLY -->
+                    <!-- =================================================
+         WEEKLY
+    ================================================== -->
 
-                    <section class="panel report-panel report-section active" id="weeklyReportSection">
+                    <section class="report-section active" id="weeklyReportSection">
 
-                        <div class="report-controls">
+                        <div class="report-filter-card">
 
-                            <label>
+                            <div>
+
+                                <p class="report-filter-label">
+                                    SELECT WEEK
+                                </p>
+
+                                <h3>
+                                    Weekly OJT Report
+                                </h3>
+
+                            </div>
+
+
+                            <label class="report-date-field">
 
                                 Choose any date in the week
 
@@ -895,11 +1023,16 @@
 
                             </label>
 
+                        </div>
 
-                            <div class="report-week-info">
 
-                                <span class="muted">
-                                    Selected week
+
+                        <div class="report-period">
+
+                            <div>
+
+                                <span>
+                                    REPORT PERIOD
                                 </span>
 
                                 <strong id="weekRange">
@@ -911,27 +1044,192 @@
                         </div>
 
 
-                        <div class="report-preview" id="reportPreview"></div>
+
+                        <!-- WEEKLY SUMMARY -->
+
+                        <div class="report-summary-grid">
+
+                            <article class="report-summary-card">
+
+                                <div class="report-summary-icon">
+                                    <i data-lucide="clock-3"></i>
+                                </div>
+
+                                <span>
+                                    Rendered Hours
+                                </span>
+
+                                <strong id="weeklyTotalHours">
+                                    0.00
+                                </strong>
+
+                                <small>
+                                    hours this week
+                                </small>
+
+                            </article>
 
 
-                        <div class="report-export-buttons">
 
-                            <button class="button primary" id="exportWordButton" type="button">
-                                <i data-lucide="file-text"></i>
-                                Word
-                            </button>
+                            <article class="report-summary-card">
+
+                                <div class="report-summary-icon">
+                                    <i data-lucide="notebook-tabs"></i>
+                                </div>
+
+                                <span>
+                                    Logged Days
+                                </span>
+
+                                <strong id="weeklyLoggedDays">
+                                    0
+                                </strong>
+
+                                <small>
+                                    days documented
+                                </small>
+
+                            </article>
 
 
-                            <button class="button secondary" id="printWeeklyButton" type="button">
-                                <i data-lucide="printer"></i>
-                                Print / PDF
-                            </button>
+
+                            <article class="report-summary-card">
+
+                                <div class="report-summary-icon">
+                                    <i data-lucide="timer"></i>
+                                </div>
+
+                                <span>
+                                    Daily Average
+                                </span>
+
+                                <strong id="weeklyAverageHours">
+                                    0.00
+                                </strong>
+
+                                <small>
+                                    hours per logged day
+                                </small>
+
+                            </article>
 
 
-                            <button class="button secondary" id="exportWeeklyCsv" type="button">
-                                <i data-lucide="sheet"></i>
-                                CSV / Excel
-                            </button>
+
+                            <article class="report-summary-card">
+
+                                <div class="report-summary-icon">
+                                    <i data-lucide="circle-check-big"></i>
+                                </div>
+
+                                <span>
+                                    Attendance
+                                </span>
+
+                                <strong id="weeklyAttendanceDays">
+                                    0
+                                </strong>
+
+                                <small>
+                                    completed days
+                                </small>
+
+                            </article>
+
+                        </div>
+
+
+
+                        <!-- REPORT DOCUMENT -->
+
+                        <section class="report-document">
+
+                            <div class="report-document-header">
+
+                                <div>
+
+                                    <p class="report-document-brand">
+                                        OVER-TIME
+                                    </p>
+
+                                    <h2>
+                                        Weekly OJT Accomplishment Report
+                                    </h2>
+
+                                </div>
+
+
+                                <div class="report-student-info">
+
+                                    <span>
+                                        Student
+                                    </span>
+
+                                    <strong id="weeklyStudentName">
+                                        Student
+                                    </strong>
+
+                                </div>
+
+                            </div>
+
+
+                            <div class="report-table" id="weeklyReportTable"></div>
+
+
+                            <div class="report-empty" id="weeklyReportEmpty" hidden>
+
+                                <i data-lucide="file-x-2"></i>
+
+                                <strong>
+                                    No records for this week
+                                </strong>
+
+                                <span>
+                                    Add daily logs to generate
+                                    your weekly report.
+                                </span>
+
+                            </div>
+
+                        </section>
+
+
+
+                        <div class="report-export-bar">
+
+                            <div>
+
+                                <strong>
+                                    Export Weekly Report
+                                </strong>
+
+                                <small>
+                                    Download or print your documentation.
+                                </small>
+
+                            </div>
+
+
+                            <div class="report-export-buttons">
+
+                                <button class="button primary" id="exportWordButton" type="button">
+                                    <i data-lucide="file-text"></i>
+                                    Word
+                                </button>
+
+
+                                <button class="button secondary" id="printWeeklyButton" type="button">
+                                    <i data-lucide="printer"></i>
+                                    PDF / Print
+                                </button>
+
+
+                                <button class="button secondary" id="exportWeeklyCsv" type="button">
+                                    <i data-lucide="sheet"></i>
+                                    CSV
+                                </button>
+
+                            </div>
 
                         </div>
 
@@ -939,29 +1237,49 @@
 
 
 
-                    <!-- MONTHLY -->
+                    <!-- =================================================
+         MONTHLY
+    ================================================== -->
 
-                    <section class="panel report-panel report-section" id="monthlyReportSection">
+                    <section class="report-section" id="monthlyReportSection">
 
-                        <div class="report-controls">
+                        <div class="report-filter-card">
 
-                            <label>
+                            <div>
 
-                                Select month
+                                <p class="report-filter-label">
+                                    SELECT MONTH
+                                </p>
+
+                                <h3>
+                                    Monthly OJT Report
+                                </h3>
+
+                            </div>
+
+
+                            <label class="report-date-field">
+
+                                Month
 
                                 <input id="reportMonth" type="month">
 
                             </label>
 
+                        </div>
 
-                            <div class="report-week-info">
 
-                                <span class="muted">
-                                    Monthly total
+
+                        <div class="report-period">
+
+                            <div>
+
+                                <span>
+                                    REPORT MONTH
                                 </span>
 
-                                <strong id="monthlyReportTotal">
-                                    0 hours
+                                <strong id="monthlyPeriodLabel">
+                                    —
                                 </strong>
 
                             </div>
@@ -969,33 +1287,227 @@
                         </div>
 
 
-                        <div class="report-preview" id="monthlyReportPreview"></div>
+
+                        <!-- MONTHLY SUMMARY -->
+
+                        <div class="report-summary-grid">
+
+                            <article class="report-summary-card">
+
+                                <div class="report-summary-icon">
+                                    <i data-lucide="clock-3"></i>
+                                </div>
+
+                                <span>
+                                    Rendered Hours
+                                </span>
+
+                                <strong id="monthlyTotalHours">
+                                    0.00
+                                </strong>
+
+                                <small>
+                                    hours this month
+                                </small>
+
+                            </article>
 
 
-                        <div class="report-export-buttons">
 
-                            <button class="button primary" id="printMonthlyButton" type="button">
-                                <i data-lucide="printer"></i>
-                                Print / PDF
-                            </button>
+                            <article class="report-summary-card">
+
+                                <div class="report-summary-icon">
+                                    <i data-lucide="notebook-tabs"></i>
+                                </div>
+
+                                <span>
+                                    Logged Days
+                                </span>
+
+                                <strong id="monthlyLoggedDays">
+                                    0
+                                </strong>
+
+                                <small>
+                                    days documented
+                                </small>
+
+                            </article>
 
 
-                            <button class="button secondary" id="exportMonthlyCsv" type="button">
-                                <i data-lucide="sheet"></i>
-                                CSV / Excel
-                            </button>
+
+                            <article class="report-summary-card">
+
+                                <div class="report-summary-icon">
+                                    <i data-lucide="timer"></i>
+                                </div>
+
+                                <span>
+                                    Daily Average
+                                </span>
+
+                                <strong id="monthlyAverageHours">
+                                    0.00
+                                </strong>
+
+                                <small>
+                                    hours per logged day
+                                </small>
+
+                            </article>
+
+
+
+                            <article class="report-summary-card">
+
+                                <div class="report-summary-icon">
+                                    <i data-lucide="circle-check-big"></i>
+                                </div>
+
+                                <span>
+                                    Attendance
+                                </span>
+
+                                <strong id="monthlyAttendanceDays">
+                                    0
+                                </strong>
+
+                                <small>
+                                    completed days
+                                </small>
+
+                            </article>
+
+                        </div>
+
+
+
+                        <!-- OJT PROGRESS -->
+
+                        <section class="report-progress-card">
+
+                            <div class="report-progress-heading">
+
+                                <div>
+
+                                    <span>
+                                        OVERALL OJT PROGRESS
+                                    </span>
+
+                                    <strong id="monthlyProgressText">
+                                        0 of 468 hours
+                                    </strong>
+
+                                </div>
+
+
+                                <strong id="monthlyProgressPercent">
+                                    0%
+                                </strong>
+
+                            </div>
+
+
+                            <progress id="monthlyProgressBar" max="100" value="0"></progress>
+
+                        </section>
+
+
+
+                        <!-- REPORT DOCUMENT -->
+
+                        <section class="report-document">
+
+                            <div class="report-document-header">
+
+                                <div>
+
+                                    <p class="report-document-brand">
+                                        OVER-TIME
+                                    </p>
+
+                                    <h2>
+                                        Monthly OJT Accomplishment Report
+                                    </h2>
+
+                                </div>
+
+
+                                <div class="report-student-info">
+
+                                    <span>
+                                        Student
+                                    </span>
+
+                                    <strong id="monthlyStudentName">
+                                        Student
+                                    </strong>
+
+                                </div>
+
+                            </div>
+
+
+                            <div class="report-table" id="monthlyReportTable"></div>
+
+
+                            <div class="report-empty" id="monthlyReportEmpty" hidden>
+
+                                <i data-lucide="file-x-2"></i>
+
+                                <strong>
+                                    No records for this month
+                                </strong>
+
+                                <span>
+                                    Add daily logs to generate
+                                    your monthly report.
+                                </span>
+
+                            </div>
+
+                        </section>
+
+
+
+                        <div class="report-export-bar">
+
+                            <div>
+
+                                <strong>
+                                    Export Monthly Report
+                                </strong>
+
+                                <small>
+                                    Download or print your documentation.
+                                </small>
+
+                            </div>
+
+
+                            <div class="report-export-buttons">
+
+                                <button class="button primary" id="printMonthlyButton" type="button">
+                                    <i data-lucide="printer"></i>
+                                    PDF / Print
+                                </button>
+
+
+                                <button class="button secondary" id="exportMonthlyCsv" type="button">
+                                    <i data-lucide="sheet"></i>
+                                    CSV
+                                </button>
+
+                            </div>
 
                         </div>
 
                     </section>
 
                 </section>
-
-
-
-                <!-- =====================================================
+                <!-- =================================================
                  SETTINGS
-            ====================================================== -->
+            ================================================== -->
 
                 <section class="page" id="settings">
 
@@ -1003,7 +1515,7 @@
 
                         <div>
 
-                            <p class="eyebrow accent">
+                            <p class="eyebrow">
                                 SETTINGS
                             </p>
 
@@ -1019,20 +1531,20 @@
 
                     <form class="panel settings-panel" id="settingsForm">
 
-                        <label>
+                        <label class="form-label">
 
-                            Student name
+                            Student Name
 
-                            <input id="studentName" type="text" maxlength="80" required>
+                            <input id="studentName" type="text" required>
 
                         </label>
 
 
-                        <label>
+                        <label class="form-label">
 
-                            Required OJT hours
+                            Required OJT Hours
 
-                            <input id="hoursGoal" type="number" min="1" max="10000" step="0.5" required>
+                            <input id="hoursGoal" type="number" min="1" step="0.5" required>
 
                         </label>
 
@@ -1043,15 +1555,18 @@
                         <label class="toggle-setting">
 
                             <span>
+
                                 <strong>
-                                    Automatic break
+                                    Automatic Break
                                 </strong>
 
                                 <small>
-                                    Automatically subtract break
+                                    Automatically deduct break
                                     time for long shifts.
                                 </small>
+
                             </span>
+
 
                             <input id="autoBreakEnabled" type="checkbox">
 
@@ -1060,20 +1575,20 @@
 
                         <div class="settings-grid">
 
-                            <label>
+                            <label class="form-label">
 
-                                Shift threshold (hours)
+                                Shift threshold
 
                                 <input id="autoBreakThreshold" type="number" min="1" max="24" step="0.5">
 
                             </label>
 
 
-                            <label>
+                            <label class="form-label">
 
-                                Break to subtract (minutes)
+                                Break minutes
 
-                                <input id="autoBreakMinutes" type="number" min="0" max="180">
+                                <input id="autoBreakMinutes" type="number" min="0" max="300">
 
                             </label>
 
@@ -1086,24 +1601,27 @@
                         <label class="toggle-setting">
 
                             <span>
+
                                 <strong>
-                                    Time-out reminder
+                                    Time Out Reminder
                                 </strong>
 
                                 <small>
-                                    Remind you if you are still
-                                    timed in.
+                                    Reminds you while Over-Time
+                                    is running.
                                 </small>
+
                             </span>
+
 
                             <input id="reminderEnabled" type="checkbox">
 
                         </label>
 
 
-                        <label>
+                        <label class="form-label">
 
-                            Reminder time
+                            Reminder Time
 
                             <input id="reminderTime" type="time">
 
@@ -1116,14 +1634,17 @@
                         <label class="toggle-setting">
 
                             <span>
+
                                 <strong>
-                                    Dark mode
+                                    Dark Mode
                                 </strong>
 
                                 <small>
-                                    Use a darker interface.
+                                    Use the dark interface.
                                 </small>
+
                             </span>
+
 
                             <input id="darkModeToggle" type="checkbox">
 
@@ -1138,37 +1659,33 @@
 
 
 
-                    <section class="panel settings-panel backup-panel">
+                    <section class="panel settings-panel account-panel">
 
                         <h3>
-                            Backup Data
+                            Account
                         </h3>
 
+
                         <p class="muted">
-                            Your records are stored locally on this
-                            device. Download a backup before clearing
-                            app or browser data.
+
+                            Signed in as
+
+                            <strong id="settingsEmail">
+                                —
+                            </strong>
+
                         </p>
 
 
-                        <div class="backup-actions">
-
-                            <button class="button secondary" id="backupButton" type="button">
-                                Download Backup
-                            </button>
-
-
-                            <label class="button secondary import-label">
-
-                                Import Backup
-
-                                <input id="importBackup" type="file" accept=".json,application/json" hidden>
-
-                            </label>
-
+                        <div class="settings-actions">
 
                             <button class="button secondary" id="settingsInstallButton" type="button" hidden>
                                 Install App
+                            </button>
+
+
+                            <button class="button danger-button" id="logoutButton" type="button">
+                                Sign Out
                             </button>
 
                         </div>
@@ -1181,7 +1698,7 @@
 
 
             <footer>
-                over-time · Student OJT Tracker
+                Over-Time Tracker &copy; 2024. Created by hvnmrk.
             </footer>
 
         </div>
@@ -1190,9 +1707,9 @@
 
 
 
-    <!-- =====================================================
-     ENTRY DIALOG
-====================================================== -->
+    <!-- 
+     ENTRY FORM
+ -->
 
     <dialog id="entryDialog">
 
@@ -1202,7 +1719,7 @@
 
                 <div>
 
-                    <p class="eyebrow accent">
+                    <p class="eyebrow">
                         DAILY LOG
                     </p>
 
@@ -1224,7 +1741,7 @@
 
                 <div class="form-row">
 
-                    <label>
+                    <label class="form-label">
 
                         Date
 
@@ -1233,11 +1750,11 @@
                     </label>
 
 
-                    <label>
+                    <label class="form-label">
 
                         Task
 
-                        <input id="task" maxlength="120" required placeholder="e.g. Updated website content">
+                        <input id="task" type="text" maxlength="120" required placeholder="e.g. Updated website">
 
                     </label>
 
@@ -1247,7 +1764,7 @@
 
                 <div class="form-row three">
 
-                    <label>
+                    <label class="form-label">
 
                         Time In
 
@@ -1264,7 +1781,7 @@
                     </label>
 
 
-                    <label>
+                    <label class="form-label">
 
                         Time Out
 
@@ -1281,18 +1798,18 @@
                     </label>
 
 
-                    <label>
+                    <label class="form-label">
 
-                        Break (minutes)
+                        Break
 
-                        <input id="breakMinutes" type="number" min="0" max="600" value="60" required>
+                        <input id="breakMinutes" type="number" min="0" max="600" value="60">
 
                     </label>
 
                 </div>
 
 
-                <div class="auto-break-note" id="autoBreakNote"></div>
+                <p class="auto-break-note" id="autoBreakNote"></p>
 
 
                 <div class="hours-preview" id="hoursPreview">
@@ -1301,34 +1818,38 @@
 
 
 
-                <label>
+                <label class="form-label">
 
                     Tasks Accomplished
 
-                    <textarea id="description" rows="5" maxlength="2000" required
-                        placeholder="Describe what you worked on today..."></textarea>
+                    <textarea id="description" rows="5" maxlength="3000" required></textarea>
 
                 </label>
 
 
 
-                <label>
+                <label class="form-label">
 
                     Photo Evidence
 
                     <input id="evidence" type="file" accept="image/png,image/jpeg,image/webp">
 
                     <small>
-                        Images are compressed before being saved.
+                        Optional. Uploaded securely to
+                        your Supabase Storage.
                     </small>
 
                 </label>
 
 
+                <div class="evidence-preview" id="evidencePreview" hidden>
+
+                    <img id="evidencePreviewImage" alt="Evidence preview">
+
+                </div>
+
+
                 <p class="small-note" id="attachmentNote"></p>
-
-
-                <p class="draft-status" id="draftStatus"></p>
 
 
                 <p class="error" id="formError"></p>
@@ -1337,11 +1858,6 @@
 
 
             <div class="dialog-actions">
-
-                <button class="button secondary" id="saveDraftButton" type="button">
-                    Save Draft
-                </button>
-
 
                 <button class="button secondary" id="cancelForm" type="button">
                     Cancel
@@ -1360,15 +1876,18 @@
 
 
 
-    <!-- =====================================================
-     ENTRY DETAILS
-====================================================== -->
+    <!-- 
+     ENTRY DETAIL
+ -->
 
     <dialog id="detailDialog">
 
         <div class="dialog-header">
 
-            <h2 id="detailTitle"></h2>
+            <h2 id="detailTitle">
+                Entry Details
+            </h2>
+
 
             <button class="icon-button" id="closeDetails" type="button">
                 ×
@@ -1383,87 +1902,9 @@
 
 
 
-    <!-- =====================================================
-     EDIT ATTENDANCE
-====================================================== -->
-
-    <dialog id="attendanceDialog">
-
-        <form id="attendanceForm">
-
-            <div class="dialog-header">
-
-                <h2>
-                    Edit Attendance
-                </h2>
-
-                <button class="icon-button" id="closeAttendanceDialog" type="button">
-                    ×
-                </button>
-
-            </div>
-
-
-            <div class="form-body">
-
-                <input id="attendanceEditId" type="hidden">
-
-
-                <label>
-
-                    Date
-
-                    <input id="attendanceEditDate" type="date" required>
-
-                </label>
-
-
-                <div class="form-row">
-
-                    <label>
-
-                        Time In
-
-                        <input id="attendanceEditTimeIn" type="time" required>
-
-                    </label>
-
-
-                    <label>
-
-                        Time Out
-
-                        <input id="attendanceEditTimeOut" type="time">
-
-                    </label>
-
-                </div>
-
-            </div>
-
-
-            <div class="dialog-actions">
-
-                <button class="button secondary" id="cancelAttendanceEdit" type="button">
-                    Cancel
-                </button>
-
-
-                <button class="button primary" type="submit">
-                    Save
-                </button>
-
-            </div>
-
-        </form>
-
-    </dialog>
-
-
-
-    <!-- =====================================================
+    <!-- 
      CALENDAR DAY
-====================================================== -->
+ -->
 
     <dialog id="calendarDayDialog">
 
@@ -1472,6 +1913,7 @@
             <h2 id="calendarDayTitle">
                 Day
             </h2>
+
 
             <button class="icon-button" id="closeCalendarDay" type="button">
                 ×
@@ -1486,7 +1928,10 @@
 
 
 
-    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <!-- TOAST -->
+
+    <div class="toast" id="toast"></div>
+
 
 </body>
 
