@@ -21,7 +21,7 @@ let dbPromise;
 let entries = [];
 let attendances = [];
 
-let goal = 468;
+let goal = 486;
 let studentName = '';
 
 let editingId = null;
