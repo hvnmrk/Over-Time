@@ -2071,3 +2071,58 @@ footer {
   }
 
 }
+
+
+.dashboard-header {
+    margin-bottom: 28px;
+
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+
+    gap: 30px;
+}
+
+.dashboard-greeting h1 {
+    margin-bottom: 9px;
+
+    font-size: clamp(
+        31px,
+        4vw,
+        42px
+    );
+}
+
+.dashboard-description {
+    max-width: 560px;
+
+    margin-bottom: 0;
+
+    color: var(--muted);
+
+    font-size: 14px;
+    line-height: 1.65;
+}
+
+.dashboard-add-button {
+    min-width: 170px;
+
+    flex-shrink: 0;
+}
+
+@media (max-width: 650px) {
+
+    .dashboard-header {
+        flex-direction: column;
+
+        align-items: stretch;
+
+        gap: 18px;
+    }
+
+    .dashboard-add-button {
+        width: 100%;
+    }
+
+}
+
