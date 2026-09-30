@@ -492,21 +492,23 @@ async function initialize() {
    USER
 ===================================================== */
 
+
+
 function updateStudentInfo() {
 
     const name =
         studentName || 'Student';
 
-
-    $('profileName')
-        .textContent =
+    $('profileName').textContent =
         name;
 
-
-    $('profileAvatar')
-        .textContent =
+    $('overviewName').textContent =
         studentName
+            ? studentName.split(' ')[0]
+            : 'Student';
 
+    $('profileAvatar').textContent =
+        studentName
             ? studentName
                 .split(/\s+/)
                 .filter(Boolean)
@@ -514,19 +516,13 @@ function updateStudentInfo() {
                 .slice(0, 2)
                 .join('')
                 .toUpperCase()
-
             : 'S';
-
 
     $('studentName').value =
         studentName;
 
-
     $('hoursGoal').value =
         goal;
-$('overviewName').textContent = studentName
-   ?studentName.split(' ')[0]
-   :student';
 }
 
 
