@@ -29,7 +29,7 @@ const SUPABASE_KEY =
 
 
 
-    
+
 const supabaseClient =
     supabase.createClient(
         SUPABASE_URL,
@@ -628,7 +628,15 @@ async function signUpUser() {
             'Creating account...';
 
     }
+    if (
+        !$('agreeTerms').checked
+    ) {
 
+        $('signupError').textContent =
+            'Please agree to the Terms of Service and Privacy Policy.';
+
+        return;
+    }
 
     try {
 

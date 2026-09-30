@@ -1,0 +1,823 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap'
+);
+
+
+:root {
+    --orange: #ea6a24;
+    --orange-dark: #cf5718;
+    --orange-soft: #fff4ec;
+
+    --text: #171717;
+    --muted: #6f6f6f;
+    --border: #e9e9e9;
+
+    --background: #f7f7f7;
+    --surface: #ffffff;
+
+    --radius-sm: 10px;
+    --radius-md: 16px;
+    --radius-lg: 24px;
+
+    --shadow:
+        0 14px 40px rgba(0, 0, 0, 0.06);
+}
+
+
+* {
+    box-sizing: border-box;
+}
+
+
+html {
+    scroll-behavior: smooth;
+}
+
+
+body {
+    margin: 0;
+
+    background:
+        linear-gradient(180deg,
+            #ffffff 0%,
+            var(--background) 380px);
+
+    color: var(--text);
+
+    font-family:
+        'DM Sans',
+        sans-serif;
+
+    line-height: 1.7;
+}
+
+
+a {
+    color: inherit;
+}
+
+
+.legal-navbar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+
+    min-height: 72px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding:
+        0 max(24px, calc((100vw - 1180px) / 2));
+
+    background:
+        rgba(255, 255, 255, 0.88);
+
+    border-bottom:
+        1px solid rgba(0, 0, 0, 0.06);
+
+    backdrop-filter:
+        blur(18px);
+}
+
+
+.legal-brand {
+    display: flex;
+    align-items: center;
+
+    gap: 10px;
+
+    text-decoration: none;
+}
+
+
+.legal-brand img {
+    width: 38px;
+    height: 38px;
+
+    border-radius: 10px;
+
+    object-fit: contain;
+}
+
+
+.legal-brand span {
+    font-family:
+        'Manrope',
+        sans-serif;
+
+    font-size: 18px;
+    font-weight: 800;
+}
+
+
+.back-link {
+    display: inline-flex;
+    align-items: center;
+
+    min-height: 40px;
+
+    padding: 0 14px;
+
+    border:
+        1px solid var(--border);
+
+    border-radius: 10px;
+
+    background: #ffffff;
+
+    color: #444;
+
+    font-size: 14px;
+    font-weight: 600;
+
+    text-decoration: none;
+
+    transition: 0.2s ease;
+}
+
+
+.back-link:hover {
+    color: var(--orange);
+
+    border-color:
+        rgba(234, 106, 36, 0.4);
+
+    transform:
+        translateY(-1px);
+}
+
+
+.legal-wrapper {
+    width: min(1180px, calc(100% - 40px));
+
+    margin: 0 auto;
+
+    display: grid;
+
+    grid-template-columns:
+        230px minmax(0, 820px);
+
+    justify-content: center;
+
+    gap: 64px;
+
+    padding: 64px 0 80px;
+}
+
+
+.legal-sidebar {
+    position: relative;
+}
+
+
+.sidebar-card {
+    position: sticky;
+    top: 105px;
+
+    padding: 22px;
+
+    background: var(--surface);
+
+    border:
+        1px solid var(--border);
+
+    border-radius:
+        var(--radius-md);
+
+    box-shadow:
+        0 8px 30px rgba(0, 0, 0, 0.035);
+}
+
+
+.sidebar-label {
+    color: var(--orange);
+
+    font-size: 11px;
+    font-weight: 800;
+
+    letter-spacing: 0.14em;
+}
+
+
+.sidebar-card h3 {
+    margin:
+        5px 0 18px;
+
+    font-family:
+        'Manrope',
+        sans-serif;
+
+    font-size: 17px;
+}
+
+
+.sidebar-card nav {
+    display: grid;
+
+    gap: 3px;
+}
+
+
+.sidebar-card nav a {
+    padding: 8px 10px;
+
+    border-radius: 8px;
+
+    color: var(--muted);
+
+    font-size: 13px;
+
+    text-decoration: none;
+
+    transition: 0.15s ease;
+}
+
+
+.sidebar-card nav a:hover {
+    color: var(--orange);
+
+    background:
+        var(--orange-soft);
+}
+
+
+.legal-content {
+    min-width: 0;
+}
+
+
+.legal-hero {
+    padding:
+        18px 0 50px;
+
+    border-bottom:
+        1px solid var(--border);
+}
+
+
+.legal-badge {
+    display: inline-flex;
+
+    padding:
+        7px 12px;
+
+    margin-bottom:
+        18px;
+
+    border-radius:
+        999px;
+
+    background:
+        var(--orange-soft);
+
+    color:
+        var(--orange);
+
+    font-size:
+        12px;
+
+    font-weight:
+        800;
+
+    letter-spacing:
+        0.04em;
+}
+
+
+.legal-hero h1 {
+    max-width:
+        680px;
+
+    margin:
+        0;
+
+    font-family:
+        'Manrope',
+        sans-serif;
+
+    font-size:
+        clamp(42px, 6vw, 68px);
+
+    line-height:
+        1.03;
+
+    letter-spacing:
+        -0.045em;
+}
+
+
+.legal-hero h1 span {
+    color:
+        var(--orange);
+}
+
+
+.legal-hero>p {
+    max-width:
+        650px;
+
+    margin:
+        22px 0 0;
+
+    color:
+        var(--muted);
+
+    font-size:
+        17px;
+
+    line-height:
+        1.75;
+}
+
+
+.last-updated {
+    margin-top:
+        22px;
+
+    color:
+        #999;
+
+    font-size:
+        13px;
+}
+
+
+.legal-intro {
+    margin:
+        42px 0;
+
+    padding:
+        26px 28px;
+
+    background:
+        var(--surface);
+
+    border:
+        1px solid var(--border);
+
+    border-radius:
+        var(--radius-md);
+
+    box-shadow:
+        0 10px 30px rgba(0, 0, 0, 0.025);
+}
+
+
+.legal-intro p {
+    margin:
+        0 0 10px;
+
+    color:
+        #444;
+
+    font-size:
+        16px;
+}
+
+
+.legal-intro p:last-child {
+    margin-bottom:
+        0;
+}
+
+
+.legal-section {
+    display:
+        grid;
+
+    grid-template-columns:
+        52px 1fr;
+
+    gap:
+        22px;
+
+    padding:
+        42px 0;
+
+    border-bottom:
+        1px solid var(--border);
+
+    scroll-margin-top:
+        100px;
+}
+
+
+.section-number {
+    width:
+        42px;
+
+    height:
+        42px;
+
+    display:
+        flex;
+
+    align-items:
+        center;
+
+    justify-content:
+        center;
+
+    border-radius:
+        12px;
+
+    background:
+        var(--orange-soft);
+
+    color:
+        var(--orange);
+
+    font-size:
+        12px;
+
+    font-weight:
+        800;
+}
+
+
+.legal-section h2 {
+    margin:
+        0 0 14px;
+
+    font-family:
+        'Manrope',
+        sans-serif;
+
+    font-size:
+        25px;
+
+    letter-spacing:
+        -0.02em;
+}
+
+
+.legal-section p {
+    margin:
+        0 0 15px;
+
+    color:
+        #565656;
+
+    font-size:
+        15px;
+}
+
+
+.legal-section p:last-child {
+    margin-bottom:
+        0;
+}
+
+
+.legal-list {
+    display:
+        grid;
+
+    gap:
+        10px;
+
+    margin:
+        20px 0 0;
+
+    padding:
+        0;
+
+    list-style:
+        none;
+}
+
+
+.legal-list li {
+    position:
+        relative;
+
+    padding:
+        13px 15px 13px 42px;
+
+    background:
+        var(--surface);
+
+    border:
+        1px solid var(--border);
+
+    border-radius:
+        var(--radius-sm);
+
+    color:
+        #505050;
+
+    font-size:
+        14px;
+}
+
+
+.legal-list li::before {
+    content:
+        "✓";
+
+    position:
+        absolute;
+
+    left:
+        15px;
+
+    top:
+        12px;
+
+    width:
+        18px;
+
+    height:
+        18px;
+
+    display:
+        flex;
+
+    align-items:
+        center;
+
+    justify-content:
+        center;
+
+    border-radius:
+        50%;
+
+    background:
+        var(--orange-soft);
+
+    color:
+        var(--orange);
+
+    font-size:
+        11px;
+
+    font-weight:
+        800;
+}
+
+
+.notice-card {
+    margin:
+        22px 0;
+
+    padding:
+        20px;
+
+    border:
+        1px solid rgba(234, 106, 36, 0.25);
+
+    border-left:
+        4px solid var(--orange);
+
+    border-radius:
+        var(--radius-sm);
+
+    background:
+        linear-gradient(135deg,
+            #fff9f5,
+            #fff4ec);
+}
+
+
+.notice-card strong {
+    display:
+        block;
+
+    margin-bottom:
+        5px;
+
+    color:
+        #333;
+}
+
+
+.notice-card p {
+    margin:
+        0;
+}
+
+
+.contact-card {
+    display:
+        flex;
+
+    flex-direction:
+        column;
+
+    gap:
+        3px;
+
+    margin-top:
+        18px;
+
+    padding:
+        20px;
+
+    background:
+        var(--surface);
+
+    border:
+        1px solid var(--border);
+
+    border-radius:
+        var(--radius-sm);
+}
+
+
+.contact-card strong {
+    font-family:
+        'Manrope',
+        sans-serif;
+}
+
+
+.contact-card span {
+    color:
+        var(--orange);
+
+    font-size:
+        14px;
+}
+
+
+.legal-footer {
+    display:
+        flex;
+
+    align-items:
+        center;
+
+    justify-content:
+        space-between;
+
+    gap:
+        20px;
+
+    padding:
+        36px 0 10px;
+
+    color:
+        #8b8b8b;
+
+    font-size:
+        13px;
+}
+
+
+.legal-footer p {
+    margin:
+        0;
+}
+
+
+.legal-footer div {
+    display:
+        flex;
+
+    gap:
+        18px;
+}
+
+
+.legal-footer a {
+    text-decoration:
+        none;
+}
+
+
+.legal-footer a:hover {
+    color:
+        var(--orange);
+}
+
+
+@media (max-width: 900px) {
+
+    .legal-wrapper {
+        grid-template-columns:
+            1fr;
+
+        gap:
+            0;
+
+        width:
+            min(760px, calc(100% - 34px));
+
+        padding-top:
+            42px;
+    }
+
+
+    .legal-sidebar {
+        display:
+            none;
+    }
+
+}
+
+
+@media (max-width: 600px) {
+
+    .legal-navbar {
+        min-height:
+            64px;
+
+        padding:
+            0 18px;
+    }
+
+
+    .legal-brand img {
+        width:
+            34px;
+
+        height:
+            34px;
+    }
+
+
+    .legal-brand span {
+        font-size:
+            16px;
+    }
+
+
+    .back-link {
+        min-height:
+            36px;
+
+        padding:
+            0 11px;
+
+        font-size:
+            12px;
+    }
+
+
+    .legal-wrapper {
+        width:
+            calc(100% - 30px);
+
+        padding:
+            32px 0 50px;
+    }
+
+
+    .legal-hero {
+        padding-top:
+            8px;
+
+        padding-bottom:
+            36px;
+    }
+
+
+    .legal-hero h1 {
+        font-size:
+            40px;
+    }
+
+
+    .legal-hero>p {
+        font-size:
+            15px;
+    }
+
+
+    .legal-intro {
+        margin:
+            28px 0;
+
+        padding:
+            20px;
+    }
+
+
+    .legal-section {
+        grid-template-columns:
+            1fr;
+
+        gap:
+            14px;
+
+        padding:
+            32px 0;
+    }
+
+
+    .legal-section h2 {
+        font-size:
+            22px;
+    }
+
+
+    .legal-footer {
+        align-items:
+            flex-start;
+
+        flex-direction:
+            column;
+    }
+
+}

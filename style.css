@@ -3032,4 +3032,37 @@ footer {
       1fr;
   }
 
-} 
+}
+
+.terms-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+
+  margin-top: 10px;
+  margin-bottom: 14px;
+
+  font-size: 12px;
+  line-height: 1.5;
+
+  color: var(--muted);
+}
+
+.terms-check input {
+  margin-top: 3px;
+}
+
+.terms-check a {
+  color: var(--orange);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.terms-check a:hover {
+  text-decoration: underline;
+}
+
+if ( !$('agreeTerms').checked) {
+  $('signupError').textContent='Please agree to the Terms of Service and Privacy Policy.';
+  return;
+}

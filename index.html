@@ -95,7 +95,7 @@
 
                     Email
 
-                    <input id="loginEmail" type="email" placeholder="you@example.com" autocomplete="email">
+                    <input id="loginEmail" type="email" placeholder="you@gmail.com" autocomplete="email">
 
                 </label>
 
@@ -162,7 +162,7 @@
 
                     Email
 
-                    <input id="signupEmail" type="email" placeholder="you@example.com" autocomplete="email">
+                    <input id="signupEmail" type="email" placeholder="you@gmail.com" autocomplete="email">
 
                 </label>
 
@@ -189,7 +189,20 @@
 
                 <p class="error" id="signupError"></p>
 
+                <label class="terms-check">
 
+                    <input type="checkbox" id="agreeTerms" required>
+                    <span>
+                        I agree to the
+                        <a href="/terms.html" target="_blank">
+                            Terms of Service
+                        </a>
+                        and
+                        <a href="/privacy.html" target="_blank">
+                            Privacy Policy
+                        </a>.
+                    </span>
+                </label>
                 <button class="button primary auth-button" id="signupButton" type="button">
                     Create Account
                 </button>
