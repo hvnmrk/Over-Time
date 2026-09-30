@@ -1,4 +1,4 @@
-const CACHE_NAME = 'overtime-static-v4';
+const CACHE_NAME = 'overtime-static-v4git status';
 
 const STATIC_FILES = [
     '/',
@@ -11,9 +11,9 @@ const STATIC_FILES = [
 ];
 
 
-// =====================================================
+// 
 // INSTALL
-// =====================================================
+// 
 
 self.addEventListener(
     'install',
@@ -40,9 +40,9 @@ self.addEventListener(
 );
 
 
-// =====================================================
+// 
 // ACTIVATE
-// =====================================================
+// 
 
 self.addEventListener(
     'activate',
@@ -79,9 +79,9 @@ self.addEventListener(
 );
 
 
-// =====================================================
+// 
 // FETCH
-// =====================================================
+// 
 
 self.addEventListener(
     'fetch',
