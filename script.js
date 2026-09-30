@@ -4894,6 +4894,10 @@ $('today')
             }
         );
 
+$('overviewName').textContent =
+    studentName
+        ? studentName.split(' ')[0]
+        : 'Student';
 
 /* =====================================================
    START
