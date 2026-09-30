@@ -3024,39 +3024,46 @@ function openDetail(id) {
 
 
 
+
 async function deleteEntry(id) {
 
-    if (
-        !confirm(
-            'Delete this entry permanently?'
-        )
-    ) {
+    if (!confirm('Delete this entry permanently?')) {
         return;
     }
 
-
-    entries =
-        entries.filter(
-            entry =>
-                entry.id !== id
+    const entryToDelete =
+        entries.find(
+            entry => entry.id === id
         );
 
+    if (!entryToDelete) {
+        return;
+    }
+
+    // Remove the daily log
+    entries =
+        entries.filter(
+            entry => entry.id !== id
+        );
+
+    // Remove attendance from the same date
+    attendances =
+        attendances.filter(
+            attendance =>
+                attendance.date !== entryToDelete.date
+        );
 
     await saveData();
 
-
-    $('detailDialog')
-        .close();
-
+    $('detailDialog').close();
 
     render();
 
-
     toast(
-        'Entry deleted.'
+        'Entry and attendance deleted.'
     );
-
 }
+
 
 
 
