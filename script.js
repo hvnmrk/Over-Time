@@ -514,7 +514,6 @@ $('showLogin')
 // 
 // SIGN UP
 // 
-
 async function signUpUser() {
 
     const name =
@@ -522,18 +521,15 @@ async function signUpUser() {
             $('signupName')?.value
         ).trim();
 
-
     const email =
         safeString(
             $('signupEmail')?.value
         ).trim();
 
-
     const password =
         safeString(
             $('signupPassword')?.value
         );
-
 
     const confirmPassword =
         safeString(
@@ -542,10 +538,7 @@ async function signUpUser() {
 
 
     if ($('signupError')) {
-
-        $('signupError').textContent =
-            '';
-
+        $('signupError').textContent = '';
     }
 
 
@@ -555,7 +548,6 @@ async function signUpUser() {
             'Enter your name.';
 
         return;
-
     }
 
 
@@ -565,33 +557,34 @@ async function signUpUser() {
             'Enter your email.';
 
         return;
-
     }
 
 
-    if (
-        password.length <
-        6
-    ) {
+    if (password.length < 6) {
 
         $('signupError').textContent =
             'Password must be at least 6 characters.';
 
         return;
-
     }
 
 
-    if (
-        password !==
-        confirmPassword
-    ) {
+    if (password !== confirmPassword) {
 
         $('signupError').textContent =
             'Passwords do not match.';
 
         return;
+    }
 
+
+    // CHECK TERMS BEFORE DISABLING BUTTON
+    if (!$('agreeTerms')?.checked) {
+
+        $('signupError').textContent =
+            'Please agree to the Terms of Service and Privacy Policy.';
+
+        return;
     }
 
 
@@ -601,22 +594,13 @@ async function signUpUser() {
 
     if (button) {
 
-        button.disabled =
-            true;
+        button.disabled = true;
 
         button.textContent =
             'Creating account...';
 
     }
-    if (
-        !$('agreeTerms').checked
-    ) {
 
-        $('signupError').textContent =
-            'Please agree to the Terms of Service and Privacy Policy.';
-
-        return;
-    }
 
     try {
 
@@ -663,19 +647,17 @@ async function signUpUser() {
                 name
             );
 
-
             await openApp(
                 data.user
             );
 
-
             return;
-
         }
 
 
         $('signupError').textContent =
             'Account created. Check your email and confirm your account.';
+
 
     } catch (error) {
 
@@ -685,20 +667,16 @@ async function signUpUser() {
         );
 
 
-        if ($('signupError')) {
+        $('signupError').textContent =
+            error?.message ||
+            'Unable to create account.';
 
-            $('signupError').textContent =
-                error?.message ||
-                'Unable to create account.';
-
-        }
 
     } finally {
 
         if (button) {
 
-            button.disabled =
-                false;
+            button.disabled = false;
 
             button.textContent =
                 'Create Account';
@@ -708,7 +686,6 @@ async function signUpUser() {
     }
 
 }
-
 
 
 $('signupButton')
