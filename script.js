@@ -634,7 +634,7 @@ async function signUpUser() {
                     options: {
 
                         emailRedirectTo:
-                            window.location.origin,
+                            'https://over-time-tracker.vercel.app',
 
                         data: {
 
@@ -7453,13 +7453,7 @@ supabaseClient.auth
             );
 
 
-            /*
-             * IMPORTANT:
-             * We do NOT open the app again on SIGNED_IN.
-             *
-             * loginUser() and checkAuth() already do that.
-             * This prevents duplicate loading and auth loops.
-             */
+
 
             if (
                 event ===
