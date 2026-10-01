@@ -7580,6 +7580,89 @@ async function initialize() {
 
 }
 
+$('forgotPasswordButton')?.addEventListener(
+    'click',
+    () => {
 
+        $('resetEmail').value =
+            $('loginEmail')?.value || '';
+
+        $('resetPasswordMessage').textContent = '';
+
+        $('forgotPasswordDialog')?.showModal();
+
+    }
+);
+
+
+$('cancelResetPassword')?.addEventListener(
+    'click',
+    () => {
+
+        $('forgotPasswordDialog')?.close();
+
+    }
+);
+
+
+$('sendResetPassword')?.addEventListener(
+    'click',
+    async () => {
+
+        const email =
+            $('resetEmail').value.trim();
+
+        const message =
+            $('resetPasswordMessage');
+
+        const button =
+            $('sendResetPassword');
+
+
+        if (!email) {
+
+            message.textContent =
+                'Please enter your email address.';
+
+            return;
+
+        }
+
+
+        button.disabled = true;
+        button.textContent = 'Sending...';
+
+        message.textContent = '';
+
+
+        const { error } =
+            await supabase.auth.resetPasswordForEmail(
+                email,
+                {
+                    redirectTo:
+                        `${window.location.origin}/reset-password.html`
+                }
+            );
+
+
+        button.disabled = false;
+        button.textContent = 'Send Reset Link';
+
+
+        if (error) {
+
+            message.textContent =
+                error.message;
+
+            return;
+
+        }
+
+
+        message.textContent =
+            'Password reset link sent. Please check your email.';
+
+    }
+);
 
 initialize();

@@ -3062,7 +3062,227 @@ footer {
   text-decoration: underline;
 }
 
-if ( !$('agreeTerms').checked) {
-  $('signupError').textContent='Please agree to the Terms of Service and Privacy Policy.';
-  return;
+.forgot-password-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.forgot-password-link {
+  padding: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+
+  color: #ea6a24;
+
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.forgot-password-link:hover {
+  text-decoration: underline;
+}
+
+.forgot-password-link:focus {
+  outline: none;
+}
+
+.forgot-dialog {
+  width: min(92vw, 430px);
+
+  padding: 0;
+
+  border: none;
+
+  border-radius: 22px;
+
+  background: transparent;
+}
+
+.forgot-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.45);
+
+  backdrop-filter: blur(5px);
+}
+
+
+.forgot-card {
+  padding: 30px;
+
+  background: #ffffff;
+
+  border: 1px solid #ececec;
+
+  border-radius: 22px;
+
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, 0.18);
+}
+
+
+.forgot-icon {
+  width: 48px;
+  height: 48px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  margin-bottom: 18px;
+
+  border-radius: 14px;
+
+  background: #fff1e8;
+
+  font-size: 22px;
+}
+
+
+.forgot-header h2 {
+  margin: 0 0 8px;
+
+  font-size: 24px;
+  font-weight: 800;
+
+  color: #181818;
+}
+
+
+.forgot-header p {
+  margin: 0 0 24px;
+
+  color: #777;
+
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+
+.forgot-field {
+  display: grid;
+
+  gap: 7px;
+}
+
+
+.forgot-field label {
+  font-size: 13px;
+  font-weight: 700;
+
+  color: #333;
+}
+
+
+.forgot-field input {
+  width: 100%;
+
+  padding: 13px 14px;
+
+  border: 1px solid #dddddd;
+
+  border-radius: 11px;
+
+  background: #ffffff;
+
+  font: inherit;
+
+  outline: none;
+
+  transition: 0.2s ease;
+}
+
+
+.forgot-field input:focus {
+  border-color: #ea6a24;
+
+  box-shadow:
+    0 0 0 3px rgba(234, 106, 36, 0.12);
+}
+
+
+.forgot-message {
+  min-height: 18px;
+
+  margin: 10px 0 0;
+
+  color: #d9534f;
+
+  font-size: 12px;
+}
+
+
+.forgot-actions {
+  display: grid;
+
+  grid-template-columns:
+    1fr 1fr;
+
+  gap: 10px;
+
+  margin-top: 18px;
+}
+
+
+.forgot-button {
+  min-height: 44px;
+
+  border: none;
+
+  border-radius: 11px;
+
+  font-size: 14px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition: 0.2s ease;
+}
+
+
+.forgot-button.secondary {
+  background: #f3f3f3;
+
+  color: #333;
+}
+
+
+.forgot-button.secondary:hover {
+  background: #e9e9e9;
+}
+
+
+.forgot-button.primary {
+  background: #ea6a24;
+
+  color: #ffffff;
+}
+
+
+.forgot-button.primary:hover {
+  background: #d95d1b;
+}
+
+
+.forgot-button:disabled {
+  opacity: 0.65;
+
+  cursor: not-allowed;
+}
+
+
+@media (max-width: 480px) {
+
+  .forgot-card {
+    padding: 24px;
+  }
+
+
+  .forgot-actions {
+    grid-template-columns: 1fr;
+  }
+
 }
