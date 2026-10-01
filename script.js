@@ -7652,7 +7652,7 @@ $('sendResetPassword')?.addEventListener(
                         email,
                         {
                             redirectTo:
-                                `${window.location.origin}/reset-password.html`
+                                'https://over-time-tracker.vercel.app/reset-password.html'
                         }
                     );
 
