@@ -1,10 +1,8 @@
-
 const SUPABASE_URL =
     'https://gpswmjqsrrsnoxpjzbcj.supabase.co';
 
-const SUPABASE_KEY =
+const SUPABASE_ANON_KEY =
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdwc3dtanFzcnJzbm94cGp6YmNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3Mzg5MTYsImV4cCI6MjEwNjMxNDkxNn0.HZBarYW20s4Thk5mP3CS6NvdNhrgS1nrb0_S_YXVYbU';
-
 
 
 
@@ -63,38 +61,56 @@ $('updatePasswordButton')?.addEventListener(
         button.textContent = 'Updating...';
 
 
-        const { error } =
-            await supabase.auth.updateUser({
-                password
-            });
+        try {
+
+            const { error } =
+                await supabase.auth.updateUser({
+                    password
+                });
 
 
-        button.disabled = false;
-        button.textContent = 'Update Password';
+            if (error) {
+                throw error;
+            }
 
 
-        if (error) {
+            message.style.color = '#2e8b57';
 
             message.textContent =
-                error.message;
+                'Password updated successfully.';
 
-            return;
+
+            setTimeout(
+                () => {
+                    window.location.href = '/';
+                },
+                1500
+            );
+
+
+        } catch (error) {
+
+            console.error(
+                'Password update error:',
+                error
+            );
+
+
+            message.style.color = '#d9534f';
+
+            message.textContent =
+                error?.message ||
+                'Unable to update password.';
+
+
+        } finally {
+
+            button.disabled = false;
+
+            button.textContent =
+                'Update Password';
 
         }
-
-
-        message.textContent =
-            'Password updated successfully.';
-
-
-        setTimeout(
-            () => {
-
-                window.location.href = '/';
-
-            },
-            1500
-        );
 
     }
 );

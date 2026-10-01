@@ -1,12 +1,4 @@
-// 
-// OVER-TIME
-// COMPLETE SCRIPT.JS
-// 
 
-
-// 
-// SUPABASE CONFIG
-// 
 
 
 const SUPABASE_URL =
@@ -14,18 +6,6 @@ const SUPABASE_URL =
 
 const SUPABASE_KEY =
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdwc3dtanFzcnJzbm94cGp6YmNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3Mzg5MTYsImV4cCI6MjEwNjMxNDkxNn0.HZBarYW20s4Thk5mP3CS6NvdNhrgS1nrb0_S_YXVYbU';
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -7579,15 +7559,18 @@ async function initialize() {
     createIcons();
 
 }
-
 $('forgotPasswordButton')?.addEventListener(
     'click',
     () => {
 
-        $('resetEmail').value =
-            $('loginEmail')?.value || '';
+        if ($('resetEmail')) {
+            $('resetEmail').value =
+                $('loginEmail')?.value || '';
+        }
 
-        $('resetPasswordMessage').textContent = '';
+        if ($('resetPasswordMessage')) {
+            $('resetPasswordMessage').textContent = '';
+        }
 
         $('forgotPasswordDialog')?.showModal();
 
@@ -7610,7 +7593,9 @@ $('sendResetPassword')?.addEventListener(
     async () => {
 
         const email =
-            $('resetEmail').value.trim();
+            safeString(
+                $('resetEmail')?.value
+            ).trim();
 
         const message =
             $('resetPasswordMessage');
@@ -7621,48 +7606,111 @@ $('sendResetPassword')?.addEventListener(
 
         if (!email) {
 
-            message.textContent =
-                'Please enter your email address.';
+            if (message) {
+                message.style.color = '#d9534f';
+
+                message.textContent =
+                    'Please enter your email address.';
+            }
 
             return;
 
         }
 
 
-        button.disabled = true;
-        button.textContent = 'Sending...';
+        if (button) {
 
-        message.textContent = '';
+            button.disabled = true;
+            button.textContent = 'Sending...';
+
+        }
 
 
-        const { error } =
-            await supabase.auth.resetPasswordForEmail(
-                email,
-                {
-                    redirectTo:
-                        `${window.location.origin}/reset-password.html`
-                }
+        if (message) {
+
+            message.textContent = '';
+            message.style.color = '';
+
+        }
+
+
+        try {
+
+            console.log(
+                'Sending password reset to:',
+                email
             );
 
 
-        button.disabled = false;
-        button.textContent = 'Send Reset Link';
+            const {
+                data,
+                error
+            } =
+                await supabaseClient
+                    .auth
+                    .resetPasswordForEmail(
+                        email,
+                        {
+                            redirectTo:
+                                `${window.location.origin}/reset-password.html`
+                        }
+                    );
 
 
-        if (error) {
+            console.log(
+                'Password reset result:',
+                data
+            );
 
-            message.textContent =
-                error.message;
 
-            return;
+            if (error) {
+                throw error;
+            }
+
+
+            if (message) {
+
+                message.style.color =
+                    '#2e8b57';
+
+                message.textContent =
+                    'If an account exists for this email, a reset link has been sent. Please check your inbox.';
+
+            }
+
+
+        } catch (error) {
+
+            console.error(
+                'Password reset error:',
+                error
+            );
+
+
+            if (message) {
+
+                message.style.color =
+                    '#d9534f';
+
+                message.textContent =
+                    error?.message ||
+                    'Unable to send reset email. Please try again.';
+
+            }
+
+
+        } finally {
+
+            if (button) {
+
+                button.disabled = false;
+
+                button.textContent =
+                    'Send Reset Link';
+
+            }
 
         }
 
-
-        message.textContent =
-            'Password reset link sent. Please check your email.';
-
     }
 );
-
-initialize();

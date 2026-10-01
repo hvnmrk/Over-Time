@@ -3286,3 +3286,194 @@ footer {
   }
 
 }
+
+.reset-password-page {
+  min-height: 100vh;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 24px;
+
+  background:
+    linear-gradient(180deg,
+      #fafafa 0%,
+      #f4f4f4 100%);
+}
+
+
+.reset-password-card {
+  width: min(100%, 420px);
+
+  padding: 34px;
+
+  background: #ffffff;
+
+  border: 1px solid #e9e9e9;
+  border-radius: 22px;
+
+  box-shadow:
+    0 18px 55px rgba(0, 0, 0, 0.08);
+}
+
+
+.reset-logo {
+  width: 52px;
+  height: 52px;
+
+  display: block;
+
+  margin: 0 auto 22px;
+
+  border-radius: 12px;
+
+  object-fit: cover;
+}
+
+
+.reset-password-card h1 {
+  margin: 0 0 14px;
+
+  font-size: 42px;
+  line-height: 1.05;
+  font-weight: 800;
+
+  letter-spacing: -0.035em;
+
+  color: #171717;
+}
+
+
+.reset-password-card>p {
+  margin: 0 0 26px;
+
+  color: #777;
+
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+
+.reset-field {
+  display: flex;
+  flex-direction: column;
+
+  gap: 8px;
+
+  margin-bottom: 18px;
+}
+
+
+.reset-field label {
+  font-size: 13px;
+  font-weight: 700;
+
+  color: #333;
+}
+
+
+.reset-field input {
+  width: 100%;
+
+  padding: 13px 14px;
+
+  border: 1px solid #dddddd;
+  border-radius: 11px;
+
+  background: #ffffff;
+
+  color: #222;
+
+  font-family: inherit;
+  font-size: 14px;
+
+  outline: none;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+
+.reset-field input::placeholder {
+  color: #aaaaaa;
+}
+
+
+.reset-field input:focus {
+  border-color: #ea6a24;
+
+  box-shadow:
+    0 0 0 3px rgba(234, 106, 36, 0.12);
+}
+
+
+#resetMessage {
+  min-height: 18px;
+
+  margin: 4px 0 10px;
+
+  font-size: 12px;
+}
+
+
+#updatePasswordButton {
+  width: 100%;
+
+  min-height: 46px;
+
+  margin-top: 4px;
+
+  border: none;
+  border-radius: 11px;
+
+  background: #ea6a24;
+
+  color: #ffffff;
+
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+
+#updatePasswordButton:hover {
+  background: #d95d1b;
+
+  transform: translateY(-1px);
+}
+
+
+#updatePasswordButton:disabled {
+  opacity: 0.65;
+
+  cursor: not-allowed;
+
+  transform: none;
+}
+
+
+@media (max-width: 520px) {
+
+  .reset-password-page {
+    padding: 16px;
+  }
+
+
+  .reset-password-card {
+    padding: 26px 22px;
+  }
+
+
+  .reset-password-card h1 {
+    font-size: 34px;
+  }
+
+}
