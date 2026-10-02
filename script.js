@@ -13,9 +13,15 @@ const SUPABASE_KEY =
 const supabaseClient =
     supabase.createClient(
         SUPABASE_URL,
-        SUPABASE_KEY
+        SUPABASE_KEY,
+        {
+            auth: {
+                persistSession: true,
+                autoRefreshToken: true,
+                detectSessionInUrl: true
+            }
+        }
     );
-
 
 
 // 
@@ -7417,70 +7423,73 @@ function render() {
 // AUTH STATE LISTENER
 // 
 
-supabaseClient.auth
-    .onAuthStateChange(
-        (
-            event,
-            session
-        ) => {
+supabaseClient.auth.onAuthStateChange(
+    async (
+        event,
+        session
+    ) => {
 
-            console.log(
-                'Auth event:',
-                event
-            );
-
+        console.log(
+            'Auth event:',
+            event
+        );
 
 
+        if (
+            event === 'SIGNED_OUT'
+        ) {
 
-            if (
-                event ===
-                'SIGNED_OUT'
-            ) {
+            currentUser = null;
 
-                currentUser =
-                    null;
-
-
-                entries =
-                    [];
+            entries = [];
+            attendances = [];
 
 
-                attendances =
-                    [];
-
-
-                if ($('mainApp')) {
-
-                    $('mainApp').hidden =
-                        true;
-
-                }
-
-
-                if ($('authScreen')) {
-
-                    $('authScreen').hidden =
-                        false;
-
-                }
-
+            if ($('mainApp')) {
+                $('mainApp').hidden = true;
             }
 
 
-            if (
-                event ===
-                'TOKEN_REFRESHED' &&
-                session?.user
-            ) {
-
-                currentUser =
-                    session.user;
-
+            if ($('authScreen')) {
+                $('authScreen').hidden = false;
             }
+
+
+            return;
 
         }
-    );
 
+
+        if (
+            (
+                event === 'INITIAL_SESSION' ||
+                event === 'SIGNED_IN'
+            ) &&
+            session?.user &&
+            !currentUser
+        ) {
+
+            await openApp(
+                session.user
+            );
+
+            return;
+
+        }
+
+
+        if (
+            event === 'TOKEN_REFRESHED' &&
+            session?.user
+        ) {
+
+            currentUser =
+                session.user;
+
+        }
+
+    }
+);
 
 
 // 
